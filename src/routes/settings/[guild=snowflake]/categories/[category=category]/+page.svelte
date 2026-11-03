@@ -18,6 +18,8 @@
 	import {
 		cleanPingRoleRules,
 		cleanRoleLimits,
+		closedChannelFromForm,
+		closedChannelToForm,
 		durationToInput,
 		inputToDuration
 	} from '$lib/util/settings';
@@ -87,6 +89,14 @@
 	category.autoClose = durationToInput(category.autoClose, { allowOff: true });
 	category.staleAfter = durationToInput(category.staleAfter, { allowOff: true });
 	category.archive ??= null;
+	// Ticket Tool parity options (bot PR #28); the defaults match the old behaviour
+	category.openingStyle ??= 'EMBED';
+	category.claimHide ??= true;
+	category.claimTakeover ??= false;
+	category.claimReleaseLocked ??= false;
+	category.claimedChannelName ??= '';
+	category.claimedCategory ??= '';
+	let closedChannel = $state(closedChannelToForm(category.keepClosedFor));
 	category.claimButton ??= null;
 	category.closeButton ??= null;
 	category.blockedRoles ??= [];
@@ -127,6 +137,9 @@
 				allowOff: true,
 				field: 'Stale after'
 			});
+			json.keepClosedFor = closedChannelFromForm(closedChannel);
+			json.claimedChannelName = category.claimedChannelName.trim() || null;
+			json.claimedCategory = category.claimedCategory || null;
 			json.roleLimits = cleanRoleLimits(category.roleLimits);
 			json.pingRoleRules = cleanPingRoleRules(category.pingRoleRules);
 			json.fallbackCategories = category.fallbackCategories.filter(
@@ -360,6 +373,38 @@
 						</label>
 					</div>
 				</Section>
+				<Section id="closing" title="Closed tickets" icon="fa-solid fa-lock">
+					<div>
+						<label class="font-medium">
+							When a ticket closes
+							<select class="input form-multiselect" bind:value={closedChannel.mode}>
+								<option value="delete">Delete the channel</option>
+								<option value="keep">Keep the channel until staff delete it</option>
+								<option value="timed">Keep the channel, then delete it after a while</option>
+							</select>
+							<Hint
+								>Kept channels are locked: the member who opened the ticket (and anyone added) can't
+								see them any more. Staff can reopen the ticket, save a transcript or delete the
+								channel.</Hint
+							>
+						</label>
+					</div>
+					{#if closedChannel.mode === 'timed'}
+						<div>
+							<label class="font-medium">
+								Delete closed channels after
+								<Required />
+								<input
+									type="text"
+									class="input form-input"
+									placeholder="e.g. 1d"
+									required
+									bind:value={closedChannel.after}
+								/>
+							</label>
+						</div>
+					{/if}
+				</Section>
 				<Section id="access" title="Access and pings" icon="fa-solid fa-user-shield">
 					<div>
 						<label class="font-medium">
@@ -424,11 +469,28 @@
 				<Section id="opening" title="Opening message" icon="fa-solid fa-message">
 					<div>
 						<label class="font-medium">
+							Style
+							<select class="input form-multiselect" bind:value={category.openingStyle}>
+								<option value="EMBED">Embed</option>
+								<option value="TEXT">Plain text</option>
+								<option value="OFF">Off</option>
+							</select>
+							<Hint
+								>Embed uses the new Discord layout if it's turned on in General settings. Off only
+								sends the pings, the topic or answers, and the buttons.</Hint
+							>
+						</label>
+					</div>
+					<div>
+						<label class="font-medium">
 							Opening message
-							<Required />
+							{#if category.openingStyle !== 'OFF'}
+								<Required />
+							{/if}
 							<textarea
 								class="input form-input"
-								required
+								required={category.openingStyle !== 'OFF'}
+								disabled={category.openingStyle === 'OFF'}
 								rows="4"
 								maxlength="1000"
 								bind:value={category.openingMessage}
@@ -471,41 +533,56 @@
 											{/if}
 											<discord-mention highlight>{data.user.username}</discord-mention>
 											has created a new ticket
-											<discord-embed
-												slot="embeds"
-												color={data.settings.primaryColour}
-												author-image={`https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.webp`}
-												author-name={data.user.username}
-												image={category.image}
-											>
-												<discord-embed-description
-													slot="description"
-													class="prose prose-sm prose-slate break-words dark:prose-invert prose-a:text-blurple"
-												>
+											{#if category.openingStyle === 'TEXT'}
+												<br /><br /><strong>{data.user.username}</strong><br /><br />
+												<span class="marked">
 													<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
 													{@html renderMarkdown(category.openingMessage, [
 														[
 															/{+\s?(user)?name\s?}+/gi,
 															`<discord-mention>${escapeHTML(data.user.username)}</discord-mention>`,
 															{ html: true }
-														],
-														[/{+\s?avgResponseTime\s?}+/gi, data.guild.stats.avgResponseTime],
-														[/{+\s?avgResolutionTime\s?}+/gi, data.guild.stats.avgResolutionTime]
+														]
 													])}
-												</discord-embed-description>
-												{#if category.requireTopic}
-													<discord-embed-fields slot="fields">
-														<discord-embed-field field-title="Topic">
-															This is a pretty good preview
-														</discord-embed-field>
-													</discord-embed-fields>
-												{/if}
-												{#if data.settings.footer}
-													<discord-embed-footer slot="footer" footer-image={data.client.avatar}>
-														{data.settings.footer}
-													</discord-embed-footer>
-												{/if}
-											</discord-embed>
+												</span>
+											{/if}
+											{#if category.openingStyle === 'EMBED'}
+												<discord-embed
+													slot="embeds"
+													color={data.settings.primaryColour}
+													author-image={`https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.webp`}
+													author-name={data.user.username}
+													image={category.image}
+												>
+													<discord-embed-description
+														slot="description"
+														class="prose prose-sm prose-slate break-words dark:prose-invert prose-a:text-blurple"
+													>
+														<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
+														{@html renderMarkdown(category.openingMessage, [
+															[
+																/{+\s?(user)?name\s?}+/gi,
+																`<discord-mention>${escapeHTML(data.user.username)}</discord-mention>`,
+																{ html: true }
+															],
+															[/{+\s?avgResponseTime\s?}+/gi, data.guild.stats.avgResponseTime],
+															[/{+\s?avgResolutionTime\s?}+/gi, data.guild.stats.avgResolutionTime]
+														])}
+													</discord-embed-description>
+													{#if category.requireTopic}
+														<discord-embed-fields slot="fields">
+															<discord-embed-field field-title="Topic">
+																This is a pretty good preview
+															</discord-embed-field>
+														</discord-embed-fields>
+													{/if}
+													{#if data.settings.footer}
+														<discord-embed-footer slot="footer" footer-image={data.client.avatar}>
+															{data.settings.footer}
+														</discord-embed-footer>
+													{/if}
+												</discord-embed>
+											{/if}
 											<discord-attachments slot="components">
 												<discord-action-row>
 													{#if category.requireTopic || qS.questions.length > 0}
@@ -621,6 +698,60 @@
 							<Hint>Allow staff to claim tickets?</Hint>
 						</label>
 					</div>
+					{#if category.claiming}
+						<fieldset class="ml-4 grid grid-cols-1 gap-4 border-l-2 border-blurple/40 pl-4">
+							<legend class="sr-only">Claiming options</legend>
+							<label for="claimHide" class="font-medium">
+								Hide claimed tickets from other staff
+								<input
+									type="checkbox"
+									id="claimHide"
+									class="form-checkbox"
+									bind:checked={category.claimHide}
+								/>
+							</label>
+							<label for="claimTakeover" class="font-medium">
+								Staff can take over claimed tickets
+								<input
+									type="checkbox"
+									id="claimTakeover"
+									class="form-checkbox"
+									bind:checked={category.claimTakeover}
+								/>
+								<Hint>Otherwise, they're told someone has already claimed it.</Hint>
+							</label>
+							<label for="claimReleaseLocked" class="font-medium">
+								Only the claimer can release
+								<input
+									type="checkbox"
+									id="claimReleaseLocked"
+									class="form-checkbox"
+									bind:checked={category.claimReleaseLocked}
+								/>
+								<Hint>Members with Manage Server can always release.</Hint>
+							</label>
+							<label class="font-medium">
+								Channel name while claimed
+								<input
+									type="text"
+									class="input form-input"
+									maxlength="100"
+									placeholder="Keep the name. Use e.g. claimed-{'{'}num{'}'} or {'{'}claimer{'}'}-{'{'}num{'}'}"
+									bind:value={category.claimedChannelName}
+								/>
+								<Hint>Discord only allows 2 renames every 10 minutes, so some may be skipped.</Hint>
+							</label>
+							<label class="font-medium">
+								Move claimed tickets to
+								<select class="input form-multiselect" bind:value={category.claimedCategory}>
+									<option value="">Don't move them</option>
+									{#each channels.filter((c) => c.id !== category.discordCategory) as channel (channel.id)}
+										<option value={channel.id}>{channel.name}</option>
+									{/each}
+								</select>
+							</label>
+						</fieldset>
+					{/if}
 					<div>
 						<label for="enableFeedback" class="font-medium">
 							Feedback

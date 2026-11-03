@@ -6,6 +6,7 @@
 	import Hint from '$components/settings/Hint.svelte';
 	import SaveBar from '$components/settings/SaveBar.svelte';
 	import {
+		LOG_EVENTS,
 		WEBHOOK_SECRET_MASK,
 		durationToInput,
 		inputToDuration,
@@ -56,6 +57,9 @@
 	});
 	settings.autoClose = durationToInput(settings.autoClose);
 	settings.logChannel = settings.logChannel ?? '';
+	settings.transcriptChannel = settings.transcriptChannel ?? '';
+	settings.transcriptDm ??= false;
+	settings.logExclude = [...(settings.logExclude ?? [])];
 	settings.staleAfter = durationToInput(settings.staleAfter);
 	settings.workingHours = workingHoursToForm(settings.workingHours);
 	settings.holidays = normaliseHolidays(settings.holidays);
@@ -96,6 +100,7 @@
 			if (autoTag !== 'custom') json.autoTag = autoTag;
 			else if (!Array.isArray(settings.autoTag)) json.autoTag = []; // it only updates if you select (and optionally deselect) a channel
 			if (settings.logChannel === '') json.logChannel = null;
+			if (settings.transcriptChannel === '') json.transcriptChannel = null;
 			json.workingHours = workingHoursFromForm(settings.workingHours);
 
 			const response = await fetch(`/api/admin/guilds/${$page.params.guild}/settings`, {
@@ -396,6 +401,57 @@
 					{/each}
 				</select>
 				<Hint>Where the bot logs ticket and settings changes.</Hint>
+			</label>
+			{#if settings.logChannel}
+				<fieldset>
+					<legend class="font-medium">Logged events</legend>
+					<div class="mt-1 grid grid-cols-1 gap-1 sm:grid-cols-2">
+						{#each LOG_EVENTS as [event, label] (event)}
+							<label class="flex items-center gap-2 font-normal">
+								<input
+									type="checkbox"
+									class="form-checkbox"
+									checked={!settings.logExclude.includes(event)}
+									onchange={(e) => {
+										settings.logExclude = e.currentTarget.checked
+											? settings.logExclude.filter((x) => x !== event)
+											: [...settings.logExclude, event];
+									}}
+								/>
+								{label}
+							</label>
+						{/each}
+					</div>
+					<Hint
+						>Unticked events aren't posted to the log channel. The bot's own log still has them.</Hint
+					>
+				</fieldset>
+			{/if}
+			<label class="font-medium">
+				Transcript channel
+				<select class="input form-multiselect" bind:value={settings.transcriptChannel}>
+					<option value="">None</option>
+					{#each channels as channel}
+						<option value={channel.id}>#{channel.name}</option>
+					{/each}
+				</select>
+				<Hint
+					>When a ticket closes, its transcript (an HTML file) is posted here. Needs archiving.</Hint
+				>
+			</label>
+			<label for="transcriptDm" class="flex items-start gap-3 font-medium">
+				<input
+					type="checkbox"
+					id="transcriptDm"
+					class="form-checkbox mt-1"
+					bind:checked={settings.transcriptDm}
+				/>
+				<span>
+					Send the transcript to the member
+					<Hint
+						>Attach the transcript file to the message the member gets when their ticket closes.</Hint
+					>
+				</span>
 			</label>
 			<label class="font-medium">
 				Auto tag
