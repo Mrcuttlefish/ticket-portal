@@ -39,11 +39,51 @@ export const guild = {
 	}
 };
 
-export const channels = [{ id: '1', name: 'Tickets', type: 4 }];
+export const channels = [
+	{ id: '1', name: 'Tickets', type: 4 },
+	{ id: '2', name: 'Tickets overflow', type: 4 },
+	{ id: '3', name: 'logs', type: 0 }
+];
 export const roles = [
 	{ id: GUILD_ID, name: '@everyone', color: 0, rawPosition: 0 },
-	{ id: '10', name: 'Staff', color: 3447003, rawPosition: 1 }
+	{ id: '10', name: 'Staff', color: 3447003, rawPosition: 1 },
+	{ id: '11', name: 'VIP', color: 0, rawPosition: 2 },
+	{ id: '12', name: 'Muted', color: 0, rawPosition: 3 }
 ];
+
+export const settings = () => ({
+	id: GUILD_ID,
+	archive: true,
+	autoClose: 0,
+	autoTag: [],
+	blocklist: [],
+	claimButton: false,
+	closeButton: true,
+	closeRequests: true,
+	errorColour: 'Red',
+	footer: 'Discord Tickets',
+	ghostPing: false,
+	holidays: ['2026-12-25'],
+	locale: 'en-GB',
+	logChannel: null,
+	primaryColour: '#009999',
+	staleAfter: null,
+	successColour: 'Green',
+	ticketNumberOffset: 0,
+	webhookSecret: '********',
+	webhookUrl: 'https://example.com/hook',
+	// days off from older dashboards are null
+	workingHours: [
+		'Europe/London',
+		null,
+		['09:00', '17:00'],
+		['09:00', '17:00'],
+		null,
+		null,
+		null,
+		null
+	]
+});
 
 export const category = () => ({
 	id: CATEGORY_ID,

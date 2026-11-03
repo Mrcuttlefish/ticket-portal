@@ -12,8 +12,8 @@
 		"build": "vite build",
 		"prepack": "npm run build",
 		"preview": "vite preview",
-		"lint": "prettier --check --plugin-search-dir=. . && eslint .",
-		"format": "prettier --write --plugin-search-dir=. .",
+		"lint": "prettier --check . && eslint .",
+		"format": "prettier --write .",
 		"test": "node --test tests/unit/*.test.js",
 		"test:e2e": "playwright test"
 	},

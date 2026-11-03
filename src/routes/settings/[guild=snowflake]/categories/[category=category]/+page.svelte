@@ -8,6 +8,17 @@
 	import CategoryQuestions from '$components/CategoryQuestions/Questions.svelte';
 	import { questionsState as qS } from '$components/state.svelte';
 	import Required from '$components/Required.svelte';
+	import Help from '$components/settings/Help.svelte';
+	import RoleSelect from '$components/settings/RoleSelect.svelte';
+	import RoleLimits from '$components/settings/RoleLimits.svelte';
+	import PingRoleRules from '$components/settings/PingRoleRules.svelte';
+	import OverrideSelect from '$components/settings/OverrideSelect.svelte';
+	import {
+		cleanPingRoleRules,
+		cleanRoleLimits,
+		durationToInput,
+		inputToDuration
+	} from '$lib/util/settings';
 	import { getContext, onMount } from 'svelte';
 	import { beforeNavigate } from '$app/navigation';
 	import ErrorBox from '$components/ErrorBox.svelte';
@@ -69,7 +80,30 @@
 		r._style = r._hexColor ? `color: ${r._hexColor}` : '';
 	});
 
-	category.cooldown = category.cooldown ? ms(category.cooldown) : '';
+	category.cooldown = durationToInput(category.cooldown);
+	// per-category overrides: null = use the server setting, 0 = off
+	category.autoClose = durationToInput(category.autoClose, { allowOff: true });
+	category.staleAfter = durationToInput(category.staleAfter, { allowOff: true });
+	category.archive ??= null;
+	category.claimButton ??= null;
+	category.closeButton ??= null;
+	category.blockedRoles ??= [];
+	category.fallbackCategories ??= [];
+	category.pingRoleRules = (category.pingRoleRules ?? []).map((r) => ({
+		roles: [...(r.roles ?? [])],
+		ping: [...(r.ping ?? [])]
+	}));
+	category.roleLimits = (category.roleLimits ?? []).map((r) => ({ ...r }));
+	const serverSettings = data.settings ?? {};
+	let showAdvanced = $state(
+		category.roleLimits.length > 0 ||
+			category.pingRoleRules.length > 0 ||
+			category.fallbackCategories.length > 0 ||
+			category.blockedRoles.length > 0 ||
+			[category.archive, category.claimButton, category.closeButton].some((v) => v !== null) ||
+			category.autoClose !== '' ||
+			category.staleAfter !== ''
+	);
 
 	let error = $state(null);
 	let loadingSubmit = $state(false);
@@ -82,7 +116,20 @@
 			const json = { ...category };
 
 			if (category.discordCategory === 'new') json.discordCategory = null;
-			json.cooldown = category.cooldown ? ms(category.cooldown) : null;
+			json.cooldown = inputToDuration(category.cooldown, { field: 'Cooldown' });
+			json.autoClose = inputToDuration(category.autoClose, {
+				allowOff: true,
+				field: 'Auto close after'
+			});
+			json.staleAfter = inputToDuration(category.staleAfter, {
+				allowOff: true,
+				field: 'Stale after'
+			});
+			json.roleLimits = cleanRoleLimits(category.roleLimits);
+			json.pingRoleRules = cleanPingRoleRules(category.pingRoleRules);
+			json.fallbackCategories = category.fallbackCategories.filter(
+				(id) => id !== category.discordCategory
+			);
 
 			if (json.name.length > 30) throw new Error(`The name is too long (${json.name.length}>30).`);
 
@@ -583,6 +630,108 @@
 						/>
 					</label>
 				</div>
+				<details
+					class="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-700"
+					bind:open={showAdvanced}
+				>
+					<summary class="cursor-pointer select-none text-xl font-bold">More options</summary>
+					<div class="mt-4 grid grid-cols-1 gap-8">
+						<div>
+							<p class="font-medium">
+								Role limits
+								<Help
+									text="Let members with these roles have a different number of open tickets than the member limit. If a member has several, the highest limit wins."
+								/>
+							</p>
+							<RoleLimits {roles} bind:value={category.roleLimits} />
+						</div>
+						<div>
+							<p class="font-medium">
+								Ping rules
+								<Help
+									text="Ping different roles depending on who opens the ticket. The first rule whose roles the creator has replaces the ping roles above."
+								/>
+							</p>
+							<PingRoleRules {roles} bind:value={category.pingRoleRules} />
+						</div>
+						<div>
+							<label class="font-medium">
+								Fallback categories
+								<Help
+									text="Discord categories hold at most 50 channels. When the main one is full, new tickets go in these, in order."
+								/>
+								<select
+									multiple
+									class="input form-multiselect h-32 font-normal"
+									bind:value={category.fallbackCategories}
+								>
+									{#each channels.filter((c) => c.id !== category.discordCategory) as channel (channel.id)}
+										<option value={channel.id} class="p-1">{channel.name}</option>
+									{/each}
+								</select>
+							</label>
+						</div>
+						<div>
+							<label class="font-medium">
+								Blocked roles
+								<Help
+									text="Members with any of these roles can't open tickets in this category (on top of the server blocklist)."
+								/>
+								<RoleSelect {roles} label="Blocked roles" bind:value={category.blockedRoles} />
+							</label>
+						</div>
+						<fieldset class="grid grid-cols-1 gap-4">
+							<legend class="mb-2 font-medium">
+								Server setting overrides
+								<Help
+									text="Change these for this category only. Leave them on the server setting to follow General settings."
+								/>
+							</legend>
+							<label class="text-base font-medium">
+								Archive messages
+								<OverrideSelect
+									label="Archive messages"
+									serverValue={serverSettings.archive}
+									bind:value={category.archive}
+								/>
+							</label>
+							<label class="text-base font-medium">
+								Claim button
+								<OverrideSelect
+									label="Claim button"
+									serverValue={serverSettings.claimButton}
+									bind:value={category.claimButton}
+								/>
+							</label>
+							<label class="text-base font-medium">
+								Close button
+								<OverrideSelect
+									label="Close button"
+									serverValue={serverSettings.closeButton}
+									bind:value={category.closeButton}
+								/>
+							</label>
+							<label class="text-base font-medium">
+								Stale after
+								<input
+									type="text"
+									class="input form-input"
+									placeholder="Server setting. Use e.g. 2d, or off"
+									bind:value={category.staleAfter}
+								/>
+							</label>
+							<label class="text-base font-medium">
+								Auto close after
+								<input
+									type="text"
+									class="input form-input"
+									placeholder="Server setting. Use e.g. 12h, or off"
+									bind:value={category.autoClose}
+								/>
+							</label>
+						</fieldset>
+					</div>
+				</details>
 			</div>
 			<div>
 				<div class="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-700">
