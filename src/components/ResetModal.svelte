@@ -1,9 +1,11 @@
 <script>
 	import { page } from '$app/stores';
+	import ExportButton from './ExportButton.svelte';
+	import { canManageData } from '$lib/util/export';
 	import { fly } from 'svelte/transition';
 	import { onBeforeClose } from 'svelte-modals';
 
-	let { isOpen, close } = $props();
+	let { isOpen, close, guild } = $props();
 
 	let allowClose = $state(true);
 	onBeforeClose(() => allowClose);
@@ -38,21 +40,21 @@
 					</h4> -->
 				</div>
 
-				<a
-					data-sveltekit-reload
-					class="rounded-xl bg-red-500 p-4 px-8 font-medium text-white duration-300 hover:bg-red-500/25 hover:text-red-500"
-					href={`/api/admin/guilds/${$page.params.guild}/export`}
-				>
-					<div class="flex items-center gap-8">
-						<i class="fa-solid fa-triangle-exclamation text-5xl"></i>
-						<div>
-							<p class="text-lg font-bold">
-								ALL SETTINGS AND TICKETS, INCLUDING ARCHIVED MESSAGES WILL BE DELETED!
-							</p>
-							<p>Do you want to export a backup first?</p>
+				{#if canManageData(guild, $page.data.user)}
+					<ExportButton
+						class="rounded-xl bg-red-500 p-4 px-8 font-medium text-white duration-300 hover:bg-red-500/25 hover:text-red-500"
+					>
+						<div class="flex items-center gap-8">
+							<i class="fa-solid fa-triangle-exclamation text-5xl"></i>
+							<div>
+								<p class="text-lg font-bold">
+									ALL SETTINGS AND TICKETS, INCLUDING ARCHIVED MESSAGES WILL BE DELETED!
+								</p>
+								<p>Do you want to export a backup first?</p>
+							</div>
 						</div>
-					</div>
-				</a>
+					</ExportButton>
+				{/if}
 				<div class="text-center">
 					<button
 						type="button"

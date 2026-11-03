@@ -1,5 +1,7 @@
 <script>
 	import { page } from '$app/stores';
+	import ExportButton from './ExportButton.svelte';
+	import { OWNER_ONLY_MESSAGE, canManageData } from '$lib/util/export';
 	import { fly } from 'svelte/transition';
 	import { modals, onBeforeClose } from 'svelte-modals';
 	import ImportModal from './ImportModal.svelte';
@@ -28,38 +30,44 @@
 				</div>
 
 				<div class="flex flex-col gap-2">
-					<a
-						data-sveltekit-reload
-						href={`/api/admin/guilds/${$page.params.guild}/export`}
-						class="group rounded-xl bg-green-300 p-4 text-left transition duration-300 hover:bg-green-500 hover:text-white dark:bg-green-500/20 dark:hover:bg-green-500"
-					>
-						<div class="flex items-center gap-2 md:gap-4">
-							<div class="flex w-full items-center gap-4">
-								<i class="fa-solid fa-file-export px-4 text-2xl"></i>
-								<div class="w-full">
-									<span class="text-lg font-semibold">Export (backup)</span>
-									<div class="text-sm">Download all of your server data</div>
+					{#if canManageData(guild, $page.data.user)}
+						<ExportButton
+							class="group rounded-xl bg-green-300 p-4 text-left transition duration-300 hover:bg-green-500 hover:text-white dark:bg-green-500/20 dark:hover:bg-green-500"
+						>
+							<div class="flex items-center gap-2 md:gap-4">
+								<div class="flex w-full items-center gap-4">
+									<i class="fa-solid fa-file-export px-4 text-2xl"></i>
+									<div class="w-full">
+										<span class="text-lg font-semibold">Export (backup)</span>
+										<div class="text-sm">Download all of your server data</div>
+									</div>
 								</div>
 							</div>
-						</div>
-					</a>
-					<button
-						class="group rounded-xl bg-orange-300 p-4 text-left transition duration-300 hover:bg-orange-500 hover:text-white dark:bg-orange-500/20 dark:hover:bg-orange-500"
-						onclick={() => modals.open(ImportModal, { guild })}
-					>
-						<div class="flex items-center gap-2 md:gap-4">
-							<div class="flex w-full items-center gap-4">
-								<i class="fa-solid fa-file-import px-4 text-2xl"></i>
-								<div class="w-full">
-									<span class="text-lg font-semibold">Import (restore)</span>
-									<div class="text-sm">Overwrite all existing data with uploaded data</div>
+						</ExportButton>
+						<button
+							class="group rounded-xl bg-orange-300 p-4 text-left transition duration-300 hover:bg-orange-500 hover:text-white dark:bg-orange-500/20 dark:hover:bg-orange-500"
+							onclick={() => modals.open(ImportModal, { guild })}
+						>
+							<div class="flex items-center gap-2 md:gap-4">
+								<div class="flex w-full items-center gap-4">
+									<i class="fa-solid fa-file-import px-4 text-2xl"></i>
+									<div class="w-full">
+										<span class="text-lg font-semibold">Import (restore)</span>
+										<div class="text-sm">Overwrite all existing data with uploaded data</div>
+									</div>
 								</div>
 							</div>
-						</div>
-					</button>
+						</button>
+					{:else}
+						<p
+							class="rounded-xl bg-gray-100 p-4 text-center text-sm text-gray-500 dark:bg-slate-800 dark:text-slate-400"
+						>
+							{OWNER_ONLY_MESSAGE}
+						</p>
+					{/if}
 					<button
 						class="group rounded-xl bg-red-300 p-4 text-left transition duration-300 hover:bg-red-500 hover:text-white dark:bg-red-500/20 dark:hover:bg-red-500"
-						onclick={() => modals.open(ResetModal)}
+						onclick={() => modals.open(ResetModal, { guild })}
 					>
 						<div class="flex items-center gap-2 md:gap-4">
 							<div class="flex w-full items-center gap-4">
