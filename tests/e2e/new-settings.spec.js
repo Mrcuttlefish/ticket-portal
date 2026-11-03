@@ -2,9 +2,9 @@ import { test, expect } from './helpers.js';
 import { GUILD_ID, CATEGORY_ID } from './fixtures.js';
 
 /** Submit the page's form and return the parsed body of the PATCH it sends. */
-async function submitAndCapture(page, request, pathSuffix) {
+async function submitAndCapture(page, request, pathSuffix, button = 'Submit') {
 	const before = (await (await request.get('/__requests')).json()).length;
-	await page.getByRole('button', { name: 'Submit' }).click();
+	await page.getByRole('button', { name: button }).click();
 	let patch;
 	await expect
 		.poll(async () => {
@@ -22,7 +22,7 @@ test.describe('general settings', () => {
 	test('saves unchanged settings without breaking anything', async ({ page, request, issues }) => {
 		await page.goto(path);
 		await page.waitForLoadState('networkidle');
-		const body = await submitAndCapture(page, request, '/settings');
+		const body = await submitAndCapture(page, request, '/settings', 'Save changes');
 		// days off are sent as 00:00-00:00, never null
 		expect(body.workingHours).toEqual([
 			'Europe/London',
@@ -48,16 +48,15 @@ test.describe('general settings', () => {
 	test('new options are saved', async ({ page, request }) => {
 		await page.goto(path);
 		await page.waitForLoadState('networkidle');
-		await page.getByLabel('Close requests').uncheck();
-		await page.getByLabel('Ghost ping').check();
-		await page.getByLabel('Ticket number offset').fill('1000');
+		await page.getByRole('checkbox', { name: /^Close requests/ }).uncheck();
+		await page.getByRole('checkbox', { name: /^Ghost ping/ }).check();
+		await page.getByRole('spinbutton', { name: /^Ticket number offset/ }).fill('1000');
 		await page.getByRole('textbox', { name: 'Secret' }).fill('s3cret');
-		await page.getByText('Click to expand').click();
 		await page.getByLabel('Holiday date').fill('2027-01-01');
 		await page.getByRole('button', { name: 'Add holiday' }).click();
 		await page.getByRole('button', { name: 'Remove 2026-12-25' }).click();
 
-		const body = await submitAndCapture(page, request, '/settings');
+		const body = await submitAndCapture(page, request, '/settings', 'Save changes');
 		expect(body.closeRequests).toBe(false);
 		expect(body.ghostPing).toBe(true);
 		expect(body.ticketNumberOffset).toBe(1000);
@@ -65,11 +64,21 @@ test.describe('general settings', () => {
 		expect(body.holidays).toEqual(['2027-01-01']);
 	});
 
+	test('saving stays on the page and confirms', async ({ page }) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('textbox', { name: /^Footer/ }).fill('Thanks for waiting');
+		await expect(page.getByText('You have unsaved changes')).toBeVisible();
+		await page.getByRole('button', { name: 'Save changes' }).click();
+		await expect(page.getByRole('status')).toContainText('Saved');
+		await expect(page).toHaveURL(new RegExp(`${path}$`));
+	});
+
 	test('the webhook secret can be removed', async ({ page, request }) => {
 		await page.goto(path);
 		await page.waitForLoadState('networkidle');
-		await page.getByLabel('Remove the saved secret').check();
-		const body = await submitAndCapture(page, request, '/settings');
+		await page.getByRole('checkbox', { name: 'Remove the saved secret' }).check();
+		const body = await submitAndCapture(page, request, '/settings', 'Save changes');
 		expect(body.webhookSecret).toBeNull();
 	});
 
@@ -78,7 +87,7 @@ test.describe('general settings', () => {
 		await page.waitForLoadState('networkidle');
 		await page.getByPlaceholder('https://example.com/tickets').fill('http://example.com/hook');
 		const before = (await (await request.get('/__requests')).json()).length;
-		await page.getByRole('button', { name: 'Submit' }).click();
+		await page.getByRole('button', { name: 'Save changes' }).click();
 		await expect(page.getByText('must start with https://')).toBeVisible();
 		const requests = (await (await request.get('/__requests')).json()).slice(before);
 		expect(requests.find((r) => r.method === 'PATCH')).toBeUndefined();
@@ -151,4 +160,16 @@ test.describe('category options', () => {
 			.evaluateAll((options) => options.map((o) => o.value));
 		expect(values).toEqual(['2']);
 	});
+});
+
+test('settings navigation highlights the current page', async ({ page }) => {
+	await page.goto(`/settings/${GUILD_ID}/general`);
+	const nav = page.getByRole('navigation', { name: 'Server settings' });
+	await expect(nav.getByRole('link', { name: 'General' })).toHaveAttribute('aria-current', 'page');
+	await nav.getByRole('link', { name: 'Categories' }).click();
+	await expect(page).toHaveURL(new RegExp(`/settings/${GUILD_ID}/categories$`));
+	await expect(nav.getByRole('link', { name: 'Categories' })).toHaveAttribute(
+		'aria-current',
+		'page'
+	);
 });

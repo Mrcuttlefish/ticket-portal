@@ -8,6 +8,7 @@ test.describe('pages render cleanly under the CSP', () => {
 	for (const path of [
 		'/settings',
 		`/settings/${GUILD_ID}`,
+		`/settings/${GUILD_ID}/general`,
 		`/settings/${GUILD_ID}/categories`,
 		`/settings/${GUILD_ID}/categories/${CATEGORY_ID}`,
 		`/settings/${GUILD_ID}/categories/new`
