@@ -9,6 +9,8 @@ const requests = [];
 
 // portal state (mutable: replies and closes)
 const tickets = f.portalTickets();
+// the server owner's ID; undefined behaves like an older bot that doesn't send ownerId
+let ownerId;
 const messages = f.portalMessages();
 /** @type {Map<string, Set<import('node:http').ServerResponse>>} */
 const streams = new Map();
@@ -36,6 +38,10 @@ http
 		const url = new URL(req.url, 'http://localhost');
 		const p = url.pathname;
 		if (p === '/__requests') return json(res, 200, requests);
+		if (p === '/__owner' && req.method === 'POST') {
+			ownerId = JSON.parse((await readBody(req)) || '{}').ownerId ?? undefined;
+			return json(res, 200, { ok: true });
+		}
 		if (!p.startsWith('/api/') && p !== '/__emit') return handler(req, res);
 
 		const body = ['POST', 'PATCH', 'PUT'].includes(req.method) ? await readBody(req) : null;
@@ -136,7 +142,27 @@ http
 		}
 		if (p === '/api/client') return json(res, 200, f.client);
 		if (p === '/api/admin/guilds') return json(res, 200, [f.guild]);
-		if (p === g) return json(res, 200, f.guild);
+		if (p === g) {
+			return json(
+				res,
+				200,
+				ownerId ? { ...f.guild, ownerId, canManageData: ownerId === f.user.id } : f.guild
+			);
+		}
+		if (p === `${g}/export`) {
+			// the bot only lets the owner export; an unknown owner is treated as "not you"
+			if (ownerId !== f.user.id)
+				return json(res, 403, {
+					error: 'Forbidden',
+					message: "Only the server's owner can do this.",
+					statusCode: 403
+				});
+			res.writeHead(200, {
+				'content-type': 'application/zip',
+				'content-disposition': 'attachment; filename="tickets-export.zip"'
+			});
+			return res.end('PK');
+		}
 		if (p === `${g}/categories`) {
 			return json(res, 200, [
 				{ ...f.category(), stats: { avgResolutionTime: '1h', avgResponseTime: '5m' } }
