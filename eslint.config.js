@@ -15,9 +15,20 @@ export default [
 				...globals.browser,
 				...globals.node
 			}
+		},
+		rules: {
+			// svelte compiler warnings (a11y, legacy state patterns) are tracked for the UI revamp;
+			// real compile errors still fail lint
+			'svelte/valid-compile': ['error', { ignoreWarnings: true }]
 		}
 	},
 	{
-		ignores: ['build/', '.svelte-kit/', 'dist/']
+		files: ['**/*.svelte.js'],
+		languageOptions: {
+			globals: { $state: 'readonly', $derived: 'readonly', $effect: 'readonly', $props: 'readonly' }
+		}
+	},
+	{
+		ignores: ['build/', '.svelte-kit/', 'dist/', '__.eslintrc.cjs']
 	}
 ];

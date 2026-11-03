@@ -6,7 +6,7 @@ import ms from 'ms';
 /** @type {import('./$types').LayoutServerLoad} */
 export async function load({ cookies, fetch, request, url }) {
 	if (url.pathname === '/invite') {
-		redirect(307, `/auth/login?invite&guild=${url.searchParams.get('guild') || ''}`)
+		redirect(307, `/auth/login?invite&guild=${url.searchParams.get('guild') || ''}`);
 	}
 	const response = await fetch(`/api/users/@me`);
 	const isJSON = response.headers.get('Content-Type')?.includes('json');
@@ -22,20 +22,21 @@ export async function load({ cookies, fetch, request, url }) {
 			error(response.status, isJSON ? JSON.stringify(body) : body);
 		}
 	}
+	const supportedLocales = getSupportedLocales();
 	let locale = cookies.get('locale');
-	if (!locale) {
-		const supportedLocales = getSupportedLocales();
-		if (supportedLocales.includes(body.locale)) {
+	// the cookie is client-controlled and is used to pick translation files, so only accept known locales
+	if (!supportedLocales.includes(locale)) {
+		if (supportedLocales.includes(body?.locale)) {
 			locale = body.locale;
 		} else {
 			const negotiator = new Negotiator(request);
-			locale = negotiator.language(supportedLocales);
+			locale = negotiator.language(supportedLocales) || 'en-GB';
 		}
 		cookies.set('locale', locale, {
 			maxAge: ms('1y') / 1000,
 			path: '/',
 			sameSite: 'lax',
-			secure: false,
+			secure: url.protocol === 'https:',
 			httpOnly: false
 		});
 	}

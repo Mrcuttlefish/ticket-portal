@@ -136,11 +136,11 @@
 							>
 						</p>
 						<p>
-							&copy;
-							2025
+							&copy; 2025
 							<a
 								href="https://eartharoid.me"
 								target="_blank"
+								rel="noopener noreferrer"
 								class="cursor-pointer transition duration-300 hover:text-blurple dark:hover:text-blurple"
 								>Isaac Saunders</a
 							>
@@ -148,7 +148,7 @@
 						<!-- <p class="my-4">
 								<a
 									href="https://lnk.earth/discord"
-									target="_blank"
+									target="_blank" rel="noopener noreferrer"
 									class="hover:text-blurple text-lg transition duration-300"
 								>
 									<i class="fab fa-discord" />

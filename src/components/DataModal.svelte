@@ -15,7 +15,7 @@
 		role="dialog"
 		class="modal mx-auto my-4 max-w-lg sm:my-12 md:my-24 lg:my-32"
 		transition:fly|global={{ y: 50 }}
-		>
+	>
 		<div
 			class="pointer-events-auto max-h-full w-full overflow-y-auto rounded-xl bg-white p-4 text-gray-800 shadow-sm dark:bg-slate-700 dark:text-slate-300"
 		>

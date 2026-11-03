@@ -3,19 +3,29 @@ import { dev } from '$app/environment';
 /** @type {import('@sveltejs/kit').Handle} */
 export async function handle({ event, resolve }) {
 	const response = await resolve(event, {
-		filterSerializedResponseHeaders: () => true
+		// only these headers of server-side fetches are serialised into the page
+		filterSerializedResponseHeaders: (name) => name === 'content-type'
 	});
+	try {
+		response.headers.set('X-Content-Type-Options', 'nosniff');
+		response.headers.set('X-Frame-Options', 'DENY');
+		response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	} catch {
+		// some responses (e.g. from fetch) have immutable headers
+	}
 	return response;
 }
 
 /** @type {import('@sveltejs/kit').HandleServerError} */
-export function handleError({ error, event }) {
+export function handleError({ error, event, status, message }) {
 	const errorId = Date.now().toString(16);
 	if (dev || process?.env.NODE_ENV === 'development') console.error(error);
 	process?.emit('sveltekit:error', { error, errorId, event });
 	return {
-		name: 'Internal Server Error',
-		message: error.message,
+		name: status === 404 ? 'Not Found' : 'Internal Server Error',
+		// don't leak internal error details (stack traces, file paths) to the browser;
+		// `message` is SvelteKit's generic text for the status (e.g. "Not Found")
+		message: dev ? error?.message : message,
 		errorId
 	};
 }

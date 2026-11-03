@@ -11,7 +11,7 @@
 			path: '/',
 			sameSite: 'lax'
 		});
-		window.location = window.location; // eslint-disable-line
+		window.location = window.location;
 	};
 </script>
 
