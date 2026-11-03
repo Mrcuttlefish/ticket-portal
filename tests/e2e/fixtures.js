@@ -54,6 +54,7 @@ export const roles = [
 export const settings = () => ({
 	id: GUILD_ID,
 	archive: true,
+	componentsV2: false,
 	autoClose: 0,
 	autoTag: [],
 	blocklist: [],

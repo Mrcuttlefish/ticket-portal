@@ -40,6 +40,7 @@ test.describe('general settings', () => {
 		expect(body.holidays).toEqual(['2026-12-25']);
 		expect(body.closeRequests).toBe(true);
 		expect(body.ghostPing).toBe(false);
+		expect(body.componentsV2).toBe(false);
 		expect(body.ticketNumberOffset).toBe(0);
 		expect(body.autoClose).toBeNull();
 		expect(issues.errors).toEqual([]);
@@ -50,6 +51,7 @@ test.describe('general settings', () => {
 		await page.waitForLoadState('networkidle');
 		await page.getByRole('checkbox', { name: /^Close requests/ }).uncheck();
 		await page.getByRole('checkbox', { name: /^Ghost ping/ }).check();
+		await page.getByRole('checkbox', { name: /^Use Discord's new message layout/ }).check();
 		await page.getByRole('spinbutton', { name: /^Ticket number offset/ }).fill('1000');
 		await page.getByRole('textbox', { name: 'Secret' }).fill('s3cret');
 		await page.getByLabel('Holiday date').fill('2027-01-01');
@@ -58,6 +60,7 @@ test.describe('general settings', () => {
 
 		const body = await submitAndCapture(page, request, '/settings', 'Save changes');
 		expect(body.closeRequests).toBe(false);
+		expect(body.componentsV2).toBe(true);
 		expect(body.ghostPing).toBe(true);
 		expect(body.ticketNumberOffset).toBe(1000);
 		expect(body.webhookSecret).toBe('s3cret');
