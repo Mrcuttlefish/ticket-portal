@@ -1,216 +1,230 @@
-<!--
-TODO: use modal props and close return data
-
- <script>
-	import { preventDefault } from 'svelte/legacy';
-
+<script>
 	import { fly } from 'svelte/transition';
-	import { modals, onBeforeClose } from 'svelte-modals';
-	import { questionsStore } from './store';
-	import { onMount } from 'svelte';
-	import Sortable from 'sortablejs';
 	import emoji from 'emoji-name-map';
 	import { v4 as uuidv4 } from 'uuid';
 	import Required from '../Required.svelte';
-	/** @type {{isOpen: any, id: any}} */
-	let { isOpen, id } = $props();
 
-	const qIndex = $questionsStore.findIndex((v) => v.id === id);
-	const q = $state($questionsStore[qIndex]);
+	/**
+	 * `question` is the reactive question object from `questionsState`;
+	 * changes are made to a copy and only written back when the user saves.
+	 * @type {{isOpen: boolean, close: Function, question: any}}
+	 */
+	let { isOpen, close, question } = $props();
 
-	onBeforeClose(() => {
-		const temp = $questionsStore;
-		temp[qIndex] = q;
-		questionsStore.set(temp);
-		return true;
-	});
+	const MAX_OPTIONS = 25;
 
+	// options saved before this editor existed have no `id`; give them one for keyed rendering
+	let options = $state(
+		($state.snapshot(question.options) ?? []).map((o) => ({
+			description: '',
+			emoji: '',
+			label: '',
+			value: '',
+			...o,
+			id: o.id ?? uuidv4()
+		}))
+	);
 	let expanded = $state(null);
-	let list = $state();
-	onMount(() => {
-		Sortable.create(list, {
-			animation: 300,
-			handle: '.handle',
-			dragClass: 'dragged',
-			swapThreshold: 0.5,
-			dataIdAttr: 'data-id',
-			store: {
-				set: (sortable) => {
-					const temp = [];
-					const order = sortable.toArray();
-					order.forEach((id, i) => (temp[i] = q.options.find((q) => q.id === id)));
-					q.options = temp;
-				}
-			}
-		});
-	});
+	let error = $state('');
+
+	function add() {
+		if (options.length >= MAX_OPTIONS) return;
+		const option = {
+			id: uuidv4(),
+			description: '',
+			emoji: '',
+			label: `Option ${options.length + 1}`,
+			value: ''
+		};
+		options.push(option);
+		expanded = option.id;
+	}
+
+	function remove(i) {
+		options.splice(i, 1);
+	}
+
+	function move(i, by) {
+		const j = i + by;
+		if (j < 0 || j >= options.length) return;
+		[options[i], options[j]] = [options[j], options[i]];
+	}
+
+	function save(event) {
+		event.preventDefault();
+		if (options.length === 0) {
+			error = 'Add at least one option.';
+			return;
+		}
+		const missing = options.find((o) => !o.label.trim() || !o.value.trim());
+		if (missing) {
+			expanded = missing.id;
+			error = 'Every option needs a label and a value.';
+			return;
+		}
+		question.options = $state.snapshot(options);
+		close();
+	}
 </script>
 
 {#if isOpen}
 	<div
 		role="dialog"
-		class="modal my-4 sm:my-12 md:my-24 lg:my-32 max-w-lg mx-auto"
+		aria-modal="true"
+		aria-labelledby="options-modal-title"
+		class="modal mx-auto my-4 max-w-lg sm:my-12 md:my-24 lg:my-32"
 		transition:fly|global={{ y: 50 }}
 	>
 		<div
-			class="pointer-events-auto bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-300 p-4 rounded-xl shadow-sm w-full max-h-full overflow-y-auto"
+			class="pointer-events-auto max-h-full w-full overflow-y-auto rounded-xl bg-white p-4 text-gray-800 shadow-sm dark:bg-slate-700 dark:text-slate-300"
 		>
-			<form onsubmit={preventDefault(() => {})} id="questionOptions" name="questionOptions">
-				<div class="m-2 sm:m-4 flex flex-col gap-6">
+			<form onsubmit={save} novalidate>
+				<div class="m-2 flex flex-col gap-6 sm:m-4">
 					<div class="flex items-center gap-5">
 						<i class="fa-regular fa-rectangle-list text-4xl"></i>
 						<div>
-							<h3 class="leading-tight text-2xl font-bold">{q.label}</h3>
-							<h4 class="leading-tight text-lg font-semibold text-gray-500 dark:text-slate-400">
-								Options
+							<h3 id="options-modal-title" class="text-2xl font-bold leading-tight">
+								{question.label}
+							</h3>
+							<h4 class="text-lg font-semibold leading-tight text-gray-500 dark:text-slate-400">
+								Options ({options.length}/{MAX_OPTIONS})
 							</h4>
 						</div>
 					</div>
-					<div bind:this={list} class="list-group flex flex-col gap-2">
-						{#each q.options as o}
-							<div
-								data-id={o.id}
-								class="list-group-item bg-gray-100/50 dark:bg-slate-800/50 p-4 rounded-xl"
-							>
-								<div class="w-full">
-									<div class="flex items-center gap-2 md:gap-4">
-										<i
-											class="handle fa-solid fa-grip-vertical text-gray-500 dark:text-slate-400 cursor-move"
-										></i>
 
-										<div class="w-full flex items-center gap-4">
-											{#if emoji.get(o.emoji)}
-												<span class="text-3xl">{emoji.get(o.emoji)}</span>
-											{/if}
-											<div class="w-full">
-												{o.label}
-												<button
-													type="button"
-													class="text-red-300 hover:text-red-500 dark:text-red-500/50 dark:hover:text-red-500 transition duration-300 disabled:cursor-not-allowed"
-													title="Remove"
-													onclick={() => {
-														const i = q.options.findIndex((x) => o.id === x.id);
-														q.options.splice(i, 1);
-														q.options = q.options;
-													}}
-												>
-													<i class="fa-solid fa-xmark"></i>
-												</button>
-												<div
-													class="select-none text-gray-500 dark:text-slate-400 hover:text-blurple dark:hover:text-blurple cursor-pointer transition duration-300 font-medium flex justify-between"
-													onclick={() => (expanded = expanded === o.id ? null : o.id)}
-												>
-													<span class="text-sm">
-														Click to {expanded === o.id ? 'collapse' : 'expand'}</span
-													>
-													<i
-														class="fa-solid {expanded === o.id
-															? 'fa-angle-up'
-															: 'fa-angle-down'} text-xl self-end"
-													></i>
-												</div>
-											</div>
-										</div>
+					<div class="flex flex-col gap-2">
+						{#each options as o, i (o.id)}
+							<div class="rounded-xl bg-gray-100/50 p-4 dark:bg-slate-800/50">
+								<div class="flex items-center gap-2 md:gap-4">
+									<div class="flex flex-col text-gray-500 dark:text-slate-400">
+										<button
+											type="button"
+											class="hover:text-blurple disabled:opacity-25"
+											title="Move up"
+											aria-label="Move {o.label} up"
+											disabled={i === 0}
+											onclick={() => move(i, -1)}
+										>
+											<i class="fa-solid fa-angle-up"></i>
+										</button>
+										<button
+											type="button"
+											class="hover:text-blurple disabled:opacity-25"
+											title="Move down"
+											aria-label="Move {o.label} down"
+											disabled={i === options.length - 1}
+											onclick={() => move(i, 1)}
+										>
+											<i class="fa-solid fa-angle-down"></i>
+										</button>
 									</div>
-									{#if expanded === o.id}
-										<div>
-											<label class="font-medium">
-												Label
-												<Required />
-												<i
-													class="fa-solid fa-circle-question text-gray-500 dark:text-slate-400 cursor-help"
-													title="The name of the option"
-												></i>
-												<input
-													type="text"
-													class="form-input input text-sm"
-													required
-													maxlength="100"
-													bind:value={o.label}
-												/>
-											</label>
-										</div>
-										<div>
-											<label class="font-medium">
-												Description
-												<i
-													class="fa-solid fa-circle-question text-gray-500 dark:text-slate-400 cursor-help"
-													title="The description of the option"
-												></i>
-												<input
-													type="text"
-													class="form-input input text-sm"
-													maxlength="100"
-													bind:value={o.description}
-												/>
-											</label>
-										</div>
-										<div>
-											<label class="font-medium">
-												Emoji
-												<i
-													class="fa-solid fa-circle-question text-gray-500 dark:text-slate-400 cursor-help"
-													title="A default emoji name, or custom emoji ID"
-												></i>
-												<span class="text-2xl">{emoji.get(o.emoji) ?? ''}</span>
-												<input
-													type="text"
-													class="form-input input text-sm"
-													maxlength="100"
-													bind:value={o.emoji}
-												/>
-											</label>
-										</div>
-										<div>
-											<label class="font-medium">
-												Value
-												<Required />
-												<i
-													class="fa-solid fa-circle-question text-gray-500 dark:text-slate-400 cursor-help"
-													title="The value of this option (the text stored and used in placeholders)"
-												></i>
-												<input
-													type="text"
-													class="form-input input text-sm"
-													required
-													maxlength="100"
-													bind:value={o.value}
-												/>
-											</label>
-										</div>
+									{#if emoji.get(o.emoji)}
+										<span class="text-3xl">{emoji.get(o.emoji)}</span>
 									{/if}
+									<button
+										type="button"
+										class="flex w-full items-center justify-between text-left font-medium transition duration-300 hover:text-blurple"
+										aria-expanded={expanded === o.id}
+										onclick={() => (expanded = expanded === o.id ? null : o.id)}
+									>
+										<span class="break-all">{o.label || 'Untitled option'}</span>
+										<i
+											class="fa-solid {expanded === o.id ? 'fa-angle-up' : 'fa-angle-down'} text-xl"
+										></i>
+									</button>
+									<button
+										type="button"
+										class="text-red-300 transition duration-300 hover:text-red-500 dark:text-red-500/50 dark:hover:text-red-500"
+										title="Remove"
+										aria-label="Remove {o.label}"
+										onclick={() => remove(i)}
+									>
+										<i class="fa-solid fa-xmark"></i>
+									</button>
 								</div>
+								{#if expanded === o.id}
+									<div class="mt-4 flex flex-col gap-3">
+										<label class="font-medium">
+											Label
+											<Required />
+											<input
+												type="text"
+												class="input form-input text-sm"
+												required
+												maxlength="100"
+												bind:value={o.label}
+											/>
+										</label>
+										<label class="font-medium">
+											Description
+											<input
+												type="text"
+												class="input form-input text-sm"
+												maxlength="100"
+												bind:value={o.description}
+											/>
+										</label>
+										<label class="font-medium">
+											Emoji
+											<span class="text-sm font-normal text-gray-500 dark:text-slate-400">
+												(a default emoji name, or a custom emoji ID)
+											</span>
+											<span class="text-2xl">{emoji.get(o.emoji) ?? ''}</span>
+											<input
+												type="text"
+												class="input form-input text-sm"
+												maxlength="100"
+												bind:value={o.emoji}
+											/>
+										</label>
+										<label class="font-medium">
+											Value
+											<Required />
+											<span class="text-sm font-normal text-gray-500 dark:text-slate-400">
+												(the text stored and used in placeholders)
+											</span>
+											<input
+												type="text"
+												class="input form-input text-sm"
+												required
+												maxlength="100"
+												bind:value={o.value}
+											/>
+										</label>
+									</div>
+								{/if}
 							</div>
 						{/each}
 					</div>
-					{#if q.options.length < 25}
+
+					{#if options.length < MAX_OPTIONS}
 						<div class="text-center">
 							<button
 								type="button"
-								class="hover:text-green-300 text-green-500 dark:hover:text-green-500/50 dark:text-green-500 p-2 px-5 rounded-lg font-medium transition duration-300 disabled:cursor-not-allowed"
-								onclick={() => {
-									q.options.push({
-										id: uuidv4(),
-										description: '',
-										emoji: '',
-										label: `Option ${q.options.length + 1}`,
-										value: ''
-									});
-									q.options = q.options;
-								}}
+								class="rounded-lg p-2 px-5 font-medium text-green-500 transition duration-300 hover:text-green-300 dark:text-green-500 dark:hover:text-green-500/50"
+								onclick={add}
 							>
 								<i class="fa-solid fa-circle-plus"></i>
 								Add
 							</button>
 						</div>
 					{/if}
+
+					{#if error}
+						<p role="alert" class="text-center font-medium text-red-500">{error}</p>
+					{/if}
 				</div>
-				<div class="flex justify-end gap-8 m-2">
+				<div class="m-2 flex justify-end gap-4">
+					<button
+						type="button"
+						class="rounded-lg p-2 px-5 font-medium transition duration-300 hover:bg-gray-200 dark:hover:bg-slate-600"
+						onclick={() => close()}
+					>
+						Cancel
+					</button>
 					<button
 						type="submit"
-						form="questionOptions"
-						class="bg-green-300 hover:bg-green-500 hover:text-white dark:bg-green-500/75 dark:hover:bg-green-500 dark:hover:text-white p-2 px-5 rounded-lg font-medium transition duration-300 disabled:cursor-not-allowed"
-						onclick={() => close(DATA)}
+						class="rounded-lg bg-green-300 p-2 px-5 font-medium transition duration-300 hover:bg-green-500 hover:text-white dark:bg-green-500/75 dark:hover:bg-green-500 dark:hover:text-white"
 					>
 						<i class="fa-solid fa-check"></i>
 						Save
@@ -219,4 +233,4 @@ TODO: use modal props and close return data
 			</form>
 		</div>
 	</div>
-{/if} -->
+{/if}

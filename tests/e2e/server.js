@@ -25,7 +25,7 @@ http
 	.createServer(async (req, res) => {
 		const url = new URL(req.url, 'http://localhost');
 		const p = url.pathname;
-		if (p === '/__requests') return json(res, 200, requests.splice(0));
+		if (p === '/__requests') return json(res, 200, requests);
 		if (!p.startsWith('/api/')) return handler(req, res);
 
 		const body = ['POST', 'PATCH', 'PUT'].includes(req.method) ? await readBody(req) : null;
@@ -52,7 +52,12 @@ http
 				message: 'Unknown <img src=x onerror=alert(1)> category'
 			});
 		}
-		if (p === `${g}/data`) return json(res, 200, []);
+		if (p === `${g}/data`) {
+			const query = url.searchParams.get('query');
+			if (query === 'channels.cache') return json(res, 200, f.channels);
+			if (query === 'roles.cache') return json(res, 200, f.roles);
+			return json(res, 200, []);
+		}
 		if (p === `${g}/settings`) return json(res, 200, { primaryColour: '#009999' });
 		// echo the path back, like a real API error might, to test that error pages escape it
 		return json(res, 404, {

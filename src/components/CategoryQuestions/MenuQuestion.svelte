@@ -1,19 +1,16 @@
 <script>
-	// import OptionsModal from './OptionsModal.svelte';
+	import { modals } from 'svelte-modals';
+	import OptionsModal from './OptionsModal.svelte';
 	import Required from '../Required.svelte';
 	/** @type {{question: any}} */
 	let { question = $bindable() } = $props();
 
-	let _maxLength = question._maxLength; // non-reactive
-
-	question.maxLength = {
-		get maxLength() {
-			return _maxLength;
-		},
-		set maxLength(input) {
-			_maxLength = Math.min(25, input);
-		}
-	};
+	// Discord allows at most 25 choices, and never more than there are options
+	$effect(() => {
+		const limit = Math.min(25, Math.max(1, question.options?.length ?? 0));
+		if (question.maxLength > limit) question.maxLength = limit;
+		if (question.minLength > question.maxLength) question.minLength = question.maxLength;
+	});
 </script>
 
 <div>
@@ -79,8 +76,7 @@
 		<button
 			type="button"
 			class="rounded-lg px-2 font-medium text-yellow-500 transition duration-300 hover:text-yellow-300 disabled:cursor-not-allowed dark:text-yellow-500 dark:hover:text-yellow-500/50"
-			disabled
-			title="Editing menu options is unavailable until the options editor is migrated to Svelte 5"
+			onclick={() => modals.open(OptionsModal, { question })}
 		>
 			<i class="fa-solid fa-pencil"></i>
 			Edit
