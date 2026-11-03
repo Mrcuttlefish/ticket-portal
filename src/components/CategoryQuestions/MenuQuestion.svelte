@@ -32,10 +32,10 @@
 </div>
 <div>
 	<label class="font-medium">
-		Maximum values
+		Most choices
 		<i
 			class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-			title="How many choices can be selected?"
+			title="The most options a member can pick"
 		></i>
 		<input
 			type="number"
@@ -49,10 +49,10 @@
 </div>
 <div>
 	<label class="font-medium">
-		Minimum values
+		Fewest choices
 		<i
 			class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-			title="The minimum number of select choices"
+			title="The fewest options a member must pick (when the question is required)"
 		></i>
 		<input
 			type="number"
@@ -63,6 +63,16 @@
 			max="25"
 			bind:value={question.minLength}
 		/>
+	</label>
+</div>
+<div>
+	<label class="font-medium">
+		Required
+		<i
+			class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
+			title="When off, members can leave this menu empty"
+		></i>
+		<input type="checkbox" class="form-checkbox" bind:checked={question.required} />
 	</label>
 </div>
 <div>
