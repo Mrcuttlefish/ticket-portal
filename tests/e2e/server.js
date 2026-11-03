@@ -163,6 +163,8 @@ http
 		if (p === `${g}/settings`) {
 			return req.method === 'GET' ? json(res, 200, f.settings()) : json(res, 200, f.settings());
 		}
+		if (p === `${g}/tags`) return json(res, 200, f.tags());
+		if (p.startsWith(`${g}/tags/`)) return json(res, 200, JSON.parse(body || '{}'));
 		if (p === '/api/locales') return json(res, 200, ['en-GB', 'fr']);
 		// echo the path back, like a real API error might, to test that error pages escape it
 		return json(res, 404, {

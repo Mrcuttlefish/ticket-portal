@@ -106,6 +106,7 @@ test.describe('category options', () => {
 		const body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
 		expect(body).toMatchObject({
 			anonymous: false,
+			suggestTags: false,
 			archive: null,
 			autoClose: null,
 			blockedRoles: [],
@@ -162,6 +163,14 @@ test.describe('category options', () => {
 		expect(body.anonymous).toBe(true);
 	});
 
+	test('tag suggestions can be turned on', async ({ page, request }) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await page.getByLabel('Suggest tags').check();
+		const body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
+		expect(body.suggestTags).toBe(true);
+	});
+
 	test('the main Discord category is not offered as a fallback', async ({ page }) => {
 		await page.goto(path);
 		await page.waitForLoadState('networkidle');
@@ -184,4 +193,35 @@ test('settings navigation highlights the current page', async ({ page }) => {
 		'aria-current',
 		'page'
 	);
+});
+
+test.describe('tags', () => {
+	const path = `/settings/${GUILD_ID}/tags`;
+
+	test('shows how many tickets a tag prevented and never sends the count back', async ({
+		page,
+		request,
+		issues
+	}) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByText('Prevented 4 tickets')).toBeVisible();
+		await expect(page.getByText(/Prevented 0/)).toHaveCount(0);
+
+		const before = (await (await request.get('/__requests')).json()).length;
+		await page.getByText('Click to expand').first().click();
+		await page.locator('form#\\31 ').evaluate((f) => f.requestSubmit());
+		let patch;
+		await expect
+			.poll(async () => {
+				const requests = (await (await request.get('/__requests')).json()).slice(before);
+				patch ??= requests.find((r) => r.method === 'PATCH' && r.path.endsWith('/tags/1'));
+				return !!patch;
+			})
+			.toBe(true);
+		const body = JSON.parse(patch.body);
+		expect(body.name).toBe('password');
+		expect(body).not.toHaveProperty('preventedCount');
+		expect(issues.errors).toEqual([]);
+	});
 });

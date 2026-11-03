@@ -574,6 +574,22 @@
 				</Section>
 				<Section id="features" title="Features" icon="fa-solid fa-toggle-on">
 					<div>
+						<label for="suggestTags" class="font-medium">
+							Suggest tags
+							<input
+								type="checkbox"
+								id="suggestTags"
+								name="suggestTags"
+								class="form-checkbox"
+								bind:checked={category.suggestTags}
+							/>
+							<Hint
+								>Before a ticket opens, show members any tags that match their topic or answers, so
+								they can find the answer without opening a ticket.</Hint
+							>
+						</label>
+					</div>
+					<div>
 						<label for="anonymous" class="font-medium">
 							Anonymous staff
 							<input
