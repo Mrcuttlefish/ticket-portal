@@ -73,6 +73,8 @@
 	let error = $state(null);
 	let loading = $state(false);
 	let saved = $state(false);
+	// the layout setting as last saved (not the unsaved checkbox), so admins can see it took effect
+	let savedComponentsV2 = $state(settings.componentsV2 === true);
 
 	const submit = async (event) => {
 		event?.preventDefault();
@@ -111,6 +113,7 @@
 			} else {
 				modified = false;
 				saved = true;
+				savedComponentsV2 = body.componentsV2 === true;
 				error = null;
 				loading = false;
 				hadWebhookSecret = !removeWebhookSecret && (hadWebhookSecret || !!webhookSecret);
@@ -359,6 +362,21 @@
 						>Opening messages and panels use Discord's newer layout components instead of embeds.
 						Panels sent this way can't be changed back into embed panels later.</Hint
 					>
+					<p class="mt-1 text-sm font-normal" data-testid="layout-status">
+						{#if savedComponentsV2}
+							<span class="text-green-600 dark:text-green-400"
+								><i class="fa-solid fa-circle-check"></i> On for this server.</span
+							>
+							New tickets and new panels use it. To switch a panel you already sent,
+							<a href="../panels" class="text-blurple hover:underline"
+								>update it on the Panels page</a
+							>.
+						{:else}
+							<span class="text-gray-500 dark:text-slate-400"
+								>Off: the bot uses classic embeds.</span
+							>
+						{/if}
+					</p>
 				</span>
 			</label>
 			<label class="font-medium">
