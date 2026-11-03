@@ -3,7 +3,7 @@
 
 	import ms from 'ms';
 	import emoji from 'emoji-name-map';
-	import { escapeHTML, renderMarkdown } from '$lib/util/markdown';
+	import { renderMarkdown } from '$lib/util/markdown';
 	import { v4 as uuidv4 } from 'uuid';
 	import CategoryQuestions from '$components/CategoryQuestions/Questions.svelte';
 	import { questionsState as qS } from '$components/state.svelte';
@@ -15,6 +15,8 @@
 	import RoleLimits from '$components/settings/RoleLimits.svelte';
 	import PingRoleRules from '$components/settings/PingRoleRules.svelte';
 	import OverrideSelect from '$components/settings/OverrideSelect.svelte';
+	import DiscordPreview from '$components/settings/DiscordPreview.svelte';
+	import { closedMessagePreview, openingButtons, openingMessagePreview } from '$lib/util/preview';
 	import {
 		cleanPingRoleRules,
 		cleanRoleLimits,
@@ -43,13 +45,6 @@
 	});
 
 	onMount(async () => {
-		const { applyPolyfills, defineCustomElements } = await import(
-			'@skyra/discord-components-core/loader'
-		);
-		applyPolyfills().then(() => {
-			defineCustomElements();
-		});
-
 		window.addEventListener('beforeunload', (event) => {
 			if (modified) {
 				event.preventDefault();
@@ -222,12 +217,73 @@
 	};
 
 	const getRole = (id) => roles.find((r) => r.id === id);
+	const safeMs = (value) => {
+		try {
+			return ms(String(value)) ?? null;
+		} catch {
+			return null;
+		}
+	};
 
 	run(() => {
 		category.customTopic = qS.questions.find((q) => q.id === category.customTopic)
 			? category.customTopic
 			: null;
 	});
+	// previews of what members and staff will see in Discord
+	const bot = $derived({ avatar: data.client?.avatar, name: data.client?.username ?? 'Tickets' });
+	const me = $derived({
+		avatar: data.user?.avatar
+			? `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.webp`
+			: null,
+		name: data.user?.username ?? 'member'
+	});
+	const previewFields = $derived(
+		qS.questions.length > 0
+			? qS.questions.map((q) => ({
+					name: q.label || 'Question',
+					value: q.type === 'MENU' ? (q.options?.[0]?.label ?? 'An option') : 'An example answer'
+				}))
+			: category.requireTopic
+				? [{ name: 'Topic', value: 'An example topic' }]
+				: []
+	);
+	const openingPreview = $derived(
+		openingMessagePreview({
+			bot,
+			buttons: openingButtons({
+				claim:
+					category.claiming && (category.claimButton ?? serverSettings.claimButton)
+						? 'claim'
+						: null,
+				close: category.closeButton ?? serverSettings.closeButton,
+				edit: previewFields.length > 0
+			}),
+			category,
+			colour: serverSettings.primaryColour,
+			creator: me,
+			fields: previewFields,
+			footer: serverSettings.footer,
+			pingRoles: (category.pingRoles ?? [])
+				.map(getRole)
+				.filter(Boolean)
+				.map((r) => ({ color: r._hexColor, name: r.name })),
+			stats: data.guild?.stats,
+			style: category.openingStyle,
+			v2: serverSettings.componentsV2 === true
+		})
+	);
+	const closedPreview = $derived(
+		closedMessagePreview({
+			archive: category.archive ?? serverSettings.archive ?? true,
+			bot,
+			closedBy: category.anonymous ? 'Staff' : me.name,
+			colour: serverSettings.primaryColour,
+			footer: serverSettings.footer,
+			keepClosedFor: closedChannel.mode === 'timed' ? (safeMs(closedChannel.after) ?? 0) : 0
+		})
+	);
+
 	// TODO: migrate
 	run(() => {
 		category.requireTopic = qS.questions.length > 0 ? false : category.requireTopic;
@@ -404,6 +460,12 @@
 							</label>
 						</div>
 					{/if}
+					{#if closedChannel.mode !== 'delete'}
+						<div class="md:col-span-2">
+							<p class="mb-1 mt-2 text-sm font-semibold">What staff see when a ticket closes</p>
+							<DiscordPreview message={closedPreview} label="Closed ticket preview" />
+						</div>
+					{/if}
 				</Section>
 				<Section id="access" title="Access and pings" icon="fa-solid fa-user-shield">
 					<div>
@@ -497,110 +559,16 @@
 							></textarea>
 							<Hint>Content to be sent in the opening message of each ticket.</Hint>
 						</label>
-						{#key category.pingRoles}
-							{#key category.requireTopic}
-								{#if category.openingMessage}
-									<p class="mb-1 mt-2 text-sm font-semibold">Preview</p>
-									<discord-messages
-										no-background={true}
-										light-theme={data.theme !== 'dark'}
-										class="bloc w-full border-0"
-									>
-										<discord-message
-											author={data.client.username}
-											avatar={data.client.avatar}
-											bot={true}
-											timestamp={`Today at ${new Date().toLocaleTimeString('default', {
-												hour: 'numeric',
-												minute: 'numeric'
-											})}`}
-											class="py-2"
-											highlight
-										>
-											{#if category.pingRoles?.length > 0}
-												{#each category.pingRoles as id, index}
-													{@const role = getRole(id)}
-													{#if role}
-														{#if index > 0}
-															{' '}
-														{/if}
-														<discord-mention color={role?._hexColor} type="role">
-															{role?.name}
-														</discord-mention>
-													{/if}
-												{/each}
-												, <br />
-											{/if}
-											<discord-mention highlight>{data.user.username}</discord-mention>
-											has created a new ticket
-											{#if category.openingStyle === 'TEXT'}
-												<br /><br /><strong>{data.user.username}</strong><br /><br />
-												<span class="marked">
-													<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
-													{@html renderMarkdown(category.openingMessage, [
-														[
-															/{+\s?(user)?name\s?}+/gi,
-															`<discord-mention>${escapeHTML(data.user.username)}</discord-mention>`,
-															{ html: true }
-														]
-													])}
-												</span>
-											{/if}
-											{#if category.openingStyle === 'EMBED'}
-												<discord-embed
-													slot="embeds"
-													color={data.settings.primaryColour}
-													author-image={`https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.webp`}
-													author-name={data.user.username}
-													image={category.image}
-												>
-													<discord-embed-description
-														slot="description"
-														class="prose prose-sm prose-slate break-words dark:prose-invert prose-a:text-blurple"
-													>
-														<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
-														{@html renderMarkdown(category.openingMessage, [
-															[
-																/{+\s?(user)?name\s?}+/gi,
-																`<discord-mention>${escapeHTML(data.user.username)}</discord-mention>`,
-																{ html: true }
-															],
-															[/{+\s?avgResponseTime\s?}+/gi, data.guild.stats.avgResponseTime],
-															[/{+\s?avgResolutionTime\s?}+/gi, data.guild.stats.avgResolutionTime]
-														])}
-													</discord-embed-description>
-													{#if category.requireTopic}
-														<discord-embed-fields slot="fields">
-															<discord-embed-field field-title="Topic">
-																This is a pretty good preview
-															</discord-embed-field>
-														</discord-embed-fields>
-													{/if}
-													{#if data.settings.footer}
-														<discord-embed-footer slot="footer" footer-image={data.client.avatar}>
-															{data.settings.footer}
-														</discord-embed-footer>
-													{/if}
-												</discord-embed>
-											{/if}
-											<discord-attachments slot="components">
-												<discord-action-row>
-													{#if category.requireTopic || qS.questions.length > 0}
-														<discord-button type="secondary">✏️ Edit</discord-button>
-													{/if}
-													{#if category.claiming && data.settings.claimButton}
-														<discord-button type="secondary">🙌 Claim</discord-button>
-													{/if}
-													{#if data.settings.closeButton}
-														<discord-button type="destructive">✖️ Close</discord-button>
-													{/if}
-												</discord-action-row>
-											</discord-attachments>
-										</discord-message>
-									</discord-messages>
-								{/if}
-							{/key}
-						{/key}
+						<p class="mb-1 mt-2 text-sm font-semibold">Preview</p>
+						<DiscordPreview message={openingPreview} label="Opening message preview" />
+						<Hint>
+							{#if category.openingStyle === 'OFF'}
+								With the opening message off, only the mentions and buttons are sent.
+							{:else if category.openingStyle === 'EMBED' && serverSettings.componentsV2}
+								This server uses Discord's new message layout (General settings).
+							{/if}
+							Placeholders are filled in with example values.
+						</Hint>
 					</div>
 					<div>
 						<label for="requireTopic" class="font-medium">

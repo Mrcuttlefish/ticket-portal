@@ -188,8 +188,12 @@ http
 		}
 		if (p === `${g}/settings`) {
 			// a PATCH answers with the saved settings, like the bot does
+			// tests can turn on Discord's new layout with a cookie (pages load settings both in SSR and the browser)
+			const settings = /(?:^|;\s*)e2e_v2=1/.test(req.headers.cookie ?? '')
+				? { ...f.settings(), componentsV2: true }
+				: f.settings();
 			return req.method === 'GET'
-				? json(res, 200, f.settings())
+				? json(res, 200, settings)
 				: json(res, 200, { ...f.settings(), ...JSON.parse(body || '{}') });
 		}
 		if (p === `${g}/panels` && req.method === 'POST') return json(res, 200, {});
