@@ -39,6 +39,12 @@ export const guild = {
 	}
 };
 
+export const channels = [{ id: '1', name: 'Tickets', type: 4 }];
+export const roles = [
+	{ id: GUILD_ID, name: '@everyone', color: 0, rawPosition: 0 },
+	{ id: '10', name: 'Staff', color: 3447003, rawPosition: 1 }
+];
+
 export const category = () => ({
 	id: CATEGORY_ID,
 	name: 'Support',
@@ -58,7 +64,7 @@ export const category = () => ({
 	ratelimit: null,
 	requiredRoles: [],
 	requireTopic: false,
-	staffRoles: [],
+	staffRoles: ['10'],
 	totalLimit: 50,
 	questions: [
 		{
