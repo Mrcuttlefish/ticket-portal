@@ -346,6 +346,21 @@
 				</label>
 			</div>
 			<Hint>Colours can be hex (#5865F2) or a Discord colour name (Blurple, Red, …).</Hint>
+			<label for="componentsV2" class="flex items-start gap-3 font-medium">
+				<input
+					type="checkbox"
+					id="componentsV2"
+					class="form-checkbox mt-1"
+					bind:checked={settings.componentsV2}
+				/>
+				<span>
+					Use Discord's new message layout
+					<Hint
+						>Opening messages and panels use Discord's newer layout components instead of embeds.
+						Panels sent this way can't be changed back into embed panels later.</Hint
+					>
+				</span>
+			</label>
 			<label class="font-medium">
 				Footer
 				<input type="text" class="input form-input" maxlength="2048" bind:value={settings.footer} />
