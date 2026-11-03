@@ -7,6 +7,8 @@
 	import Required from '$components/Required.svelte';
 	import Hint from '$components/settings/Hint.svelte';
 	import ErrorBox from '$components/ErrorBox.svelte';
+	import DiscordPreview from '$components/settings/DiscordPreview.svelte';
+	import { panelPreview } from '$lib/util/preview';
 	/**
 	 * @typedef {Object} Props
 	 * @property {import('./$types').PageData} data
@@ -16,7 +18,7 @@
 	let { data } = $props();
 
 	let { categories, channels } = $state(data);
-	const componentsV2 = data.componentsV2;
+	const componentsV2 = data.settings.componentsV2;
 	channels = channels.filter((c) => c.type === 0); // text
 	let error = $state(null);
 	let loading = $state(false);
@@ -53,6 +55,30 @@
 		acc[(emoji.get(c.emoji) ?? '') + c.name] = c.id;
 		return acc;
 	}, {});
+
+	const selected = $derived(
+		selectedCategories
+			.map((name) => categories.find((c) => c.id === categoryOptions[name]))
+			.filter(Boolean)
+	);
+	const preview = $derived(
+		panelPreview({
+			bot: { avatar: data.client?.avatar, name: data.client?.username ?? 'Tickets' },
+			categories: selected.map((c) => ({
+				description: c.description,
+				emoji: c.emoji,
+				name: c.name
+			})),
+			colour: data.settings.primaryColour,
+			description: panel.description,
+			footer: data.settings.footer,
+			image: panel.image,
+			thumbnail: panel.thumbnail,
+			title: panel.title,
+			type: panel.type,
+			v2: componentsV2
+		})
+	);
 
 	const getChannelName = (id) => {
 		return channels.find((c) => c.id === id)?.name;
@@ -100,9 +126,9 @@
 
 	run(() => {
 		panel.type =
-			panel.categories.length > 5
+			selectedCategories.length > 5
 				? 'MENU'
-				: panel.categories.length > 1 && panel.type === 'MESSAGE'
+				: selectedCategories.length > 1 && panel.type === 'MESSAGE'
 					? 'BUTTON'
 					: panel.type;
 	});
@@ -178,7 +204,7 @@
 					<label>
 						<span class="font-medium">Type</span>
 						<select class="input form-multiselect font-normal" required bind:value={panel.type}>
-							<option value="BUTTON" class="p-1" disabled={panel.categories.length > 5}>
+							<option value="BUTTON" class="p-1" disabled={selectedCategories.length > 5}>
 								<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" default /> -->
 								Buttons
 							</option>
@@ -299,6 +325,13 @@
 				</div>
 			</div>
 		</form>
+		<div class="mt-6">
+			<p class="mb-1 text-sm font-semibold">Preview</p>
+			<DiscordPreview message={preview} label="Panel preview" />
+			{#if selected.length === 0}
+				<Hint>Choose categories to see the {panel.type === 'MENU' ? 'menu' : 'buttons'}.</Hint>
+			{/if}
+		</div>
 	</div>
 	<div class="mx-auto mt-8 max-w-lg text-center text-base">
 		<div class="rounded-xl border-2 border-cyan-500 bg-cyan-500/20 p-2">

@@ -11,7 +11,8 @@ test.describe('pages render cleanly under the CSP', () => {
 		`/settings/${GUILD_ID}/general`,
 		`/settings/${GUILD_ID}/categories`,
 		`/settings/${GUILD_ID}/categories/${CATEGORY_ID}`,
-		`/settings/${GUILD_ID}/categories/new`
+		`/settings/${GUILD_ID}/categories/new`,
+		`/settings/${GUILD_ID}/panels`
 	]) {
 		test(path, async ({ page, issues }) => {
 			const response = await page.goto(path);
