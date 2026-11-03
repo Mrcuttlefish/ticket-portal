@@ -22,7 +22,16 @@ export async function load({ fetch, params }) {
 			requiredRoles: [],
 			requireTopic: false,
 			staffRoles: [],
-			totalLimit: 50
+			totalLimit: 50,
+			archive: null,
+			autoClose: null,
+			blockedRoles: [],
+			claimButton: null,
+			closeButton: null,
+			fallbackCategories: [],
+			pingRoleRules: [],
+			roleLimits: [],
+			staleAfter: null
 		};
 	} else {
 		const response = await fetch(

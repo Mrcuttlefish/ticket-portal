@@ -83,11 +83,11 @@ test.describe('markdown previews escape HTML', () => {
 	test('opening message and channel name previews', async ({ page, issues }) => {
 		await page.goto(`/settings/${GUILD_ID}/categories/new`);
 		await page.waitForLoadState('networkidle');
-		const textareas = page.locator('textarea');
+		const textareas = page.locator('textarea:visible');
 		const count = await textareas.count();
 		for (let i = 0; i < count; i++)
 			await textareas.nth(i).fill(`${PAYLOAD} [x](javascript:alert(1))`);
-		const inputs = page.locator('input[type=text]');
+		const inputs = page.locator('input[type=text]:visible');
 		for (let i = 0; i < (await inputs.count()); i++) {
 			await inputs
 				.nth(i)

@@ -58,7 +58,10 @@ http
 			if (query === 'roles.cache') return json(res, 200, f.roles);
 			return json(res, 200, []);
 		}
-		if (p === `${g}/settings`) return json(res, 200, { primaryColour: '#009999' });
+		if (p === `${g}/settings`) {
+			return req.method === 'GET' ? json(res, 200, f.settings()) : json(res, 200, f.settings());
+		}
+		if (p === '/api/locales') return json(res, 200, ['en-GB', 'fr']);
 		// echo the path back, like a real API error might, to test that error pages escape it
 		return json(res, 404, {
 			error: 'Not Found',

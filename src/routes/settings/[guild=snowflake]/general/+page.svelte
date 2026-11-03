@@ -3,7 +3,18 @@
 
 	import { page } from '$app/stores';
 	import zones from '$lib/timezones.json';
-	import ms from 'ms';
+	import HolidayPicker from '$components/settings/HolidayPicker.svelte';
+	import Help from '$components/settings/Help.svelte';
+	import {
+		WEBHOOK_SECRET_MASK,
+		durationToInput,
+		inputToDuration,
+		normaliseHolidays,
+		parseWebhookUrl,
+		webhookSecretPayload,
+		workingHoursFromForm,
+		workingHoursToForm
+	} from '$lib/util/settings';
 	import { fade } from 'svelte/transition';
 	import Required from '$components/Required.svelte';
 	import { onMount } from 'svelte';
@@ -45,10 +56,20 @@
 		r._hexColor = r.color > 0 ? `#${r.color.toString(16).padStart(6, '0')}` : null;
 		r._style = r._hexColor ? `color: ${r._hexColor}` : '';
 	});
-	settings.autoClose = settings.autoClose ? ms(settings.autoClose) : '';
+	settings.autoClose = durationToInput(settings.autoClose);
 	settings.logChannel = settings.logChannel ?? '';
-	settings.staleAfter = settings.staleAfter ? ms(settings.staleAfter) : '';
-	settings.workingHours = settings.workingHours.map((v) => (v === null ? [] : v));
+	settings.staleAfter = durationToInput(settings.staleAfter);
+	settings.workingHours = workingHoursToForm(settings.workingHours);
+	settings.holidays = normaliseHolidays(settings.holidays);
+	settings.closeRequests ??= true;
+	settings.ghostPing ??= false;
+	settings.ticketNumberOffset ??= 0;
+	settings.webhookUrl ??= '';
+
+	// the bot never sends the secret back, only a mask when one is set
+	const hadWebhookSecret = settings.webhookSecret === WEBHOOK_SECRET_MASK;
+	let webhookSecret = $state('');
+	let removeWebhookSecret = $state(false);
 
 	let autoTag = $state(Array.isArray(settings.autoTag) ? 'custom' : settings.autoTag); // there are 2 inputs for autoTag, need separate variables
 	let error = $state(null);
@@ -59,14 +80,20 @@
 			// error = null;
 			loading = true;
 			const json = { ...settings };
-			json.autoClose = settings.autoClose ? ms(settings.autoClose) : null;
-			json.staleAfter = settings.staleAfter ? ms(settings.staleAfter) : null;
-			// if (json.autoClose !== null && json.staleAfter === null)
-			// 	throw new Error('autoClose cannot be set unless staleAfter is also set.');
+			json.autoClose = inputToDuration(settings.autoClose, { field: 'Auto close after' });
+			json.staleAfter = inputToDuration(settings.staleAfter, { field: 'Stale after' });
+			json.holidays = normaliseHolidays(settings.holidays);
+			json.ticketNumberOffset = Number(settings.ticketNumberOffset) || 0;
+			json.webhookUrl = parseWebhookUrl(settings.webhookUrl);
+			json.webhookSecret = webhookSecretPayload({
+				input: webhookSecret,
+				hadSecret: hadWebhookSecret,
+				remove: removeWebhookSecret
+			});
 			if (autoTag !== 'custom') json.autoTag = autoTag;
 			else if (!Array.isArray(settings.autoTag)) json.autoTag = []; // it only updates if you select (and optionally deselect) a channel
 			if (settings.logChannel === '') json.logChannel = null;
-			json.workingHours = settings.workingHours.map((v) => (v.length === 0 ? null : v));
+			json.workingHours = workingHoursFromForm(settings.workingHours);
 
 			const response = await fetch(`/api/admin/guilds/${$page.params.guild}/settings`, {
 				method: 'PATCH',
@@ -234,6 +261,21 @@
 				</div>
 			</div>
 			<div>
+				<label for="closeRequests" class="font-medium">
+					Close requests
+					<Help
+						text="When on, /close and the close button ask the ticket creator to confirm. When off, tickets close straight away."
+					/>
+					<input
+						type="checkbox"
+						id="closeRequests"
+						name="closeRequests"
+						class="form-checkbox"
+						bind:checked={settings.closeRequests}
+					/>
+				</label>
+			</div>
+			<div>
 				<label class="font-medium">
 					Error colour
 					<i
@@ -251,6 +293,21 @@
 						title="What text should be at the bottom of embeds?"
 					></i>
 					<input type="text" class="input form-input" bind:value={settings.footer} />
+				</label>
+			</div>
+			<div>
+				<label for="ghostPing" class="font-medium">
+					Ghost ping
+					<Help
+						text="When staff reply and the ticket creator hasn't said anything for 5 minutes, ping them and delete the ping straight away (once until they reply)."
+					/>
+					<input
+						type="checkbox"
+						id="ghostPing"
+						name="ghostPing"
+						class="form-checkbox"
+						bind:checked={settings.ghostPing}
+					/>
 				</label>
 			</div>
 			<div>
@@ -320,6 +377,63 @@
 				</label>
 			</div>
 			<div>
+				<label class="font-medium">
+					Ticket number offset
+					<Help
+						text="Start ticket numbers from this number, e.g. when moving from another bot. Numbers never go backwards."
+					/>
+					<input
+						type="number"
+						min="0"
+						max="1000000000"
+						step="1"
+						class="input form-input"
+						bind:value={settings.ticketNumberOffset}
+					/>
+				</label>
+			</div>
+			<fieldset class="flex flex-col gap-3">
+				<legend class="font-medium">
+					Webhook
+					<Help
+						text="The bot sends a JSON POST to this URL when a ticket is opened or closed. With a secret, the body is signed (HMAC-SHA256) in the X-Signature-256 header."
+					/>
+				</legend>
+				<label class="text-base font-medium">
+					URL
+					<input
+						type="url"
+						inputmode="url"
+						placeholder="https://example.com/tickets"
+						autocomplete="off"
+						class="input form-input"
+						bind:value={settings.webhookUrl}
+					/>
+				</label>
+				<label class="text-base font-medium">
+					Secret
+					<input
+						type="password"
+						autocomplete="new-password"
+						placeholder={hadWebhookSecret ? 'Saved (hidden). Type to replace it' : 'Optional'}
+						disabled={removeWebhookSecret}
+						class="input form-input"
+						bind:value={webhookSecret}
+					/>
+				</label>
+				{#if hadWebhookSecret}
+					<label for="removeWebhookSecret" class="text-base font-normal">
+						<input
+							type="checkbox"
+							id="removeWebhookSecret"
+							class="form-checkbox"
+							bind:checked={removeWebhookSecret}
+						/>
+						Remove the saved secret
+					</label>
+				{/if}
+			</fieldset>
+			<div>
 				<div class="grid grid-cols-1 gap-2 font-medium">
 					<div>
 						Working hours
@@ -381,6 +495,15 @@
 										</div>
 									</label>
 								{/each}
+								<div class="mt-4">
+									<p class="text-base">
+										Holidays
+										<Help
+											text="Days when staff are away all day, in the working hours timezone. The opening message tells members when staff are back."
+										/>
+									</p>
+									<HolidayPicker bind:value={settings.holidays} />
+								</div>
 							</div>
 						</div>
 					{/if}
