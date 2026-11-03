@@ -7,6 +7,16 @@ import * as f from './fixtures.js';
 const port = Number(process.env.PORT || 5173);
 const requests = [];
 
+// portal state (mutable: replies and closes)
+const tickets = f.portalTickets();
+const messages = f.portalMessages();
+/** @type {Map<string, Set<import('node:http').ServerResponse>>} */
+const streams = new Map();
+const emit = (ticketId, event, data) => {
+	for (const res of streams.get(ticketId) ?? [])
+		res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+};
+
 const json = (res, status, body) => {
 	res.writeHead(status, { 'content-type': 'application/json' });
 	res.end(JSON.stringify(body));
@@ -26,12 +36,104 @@ http
 		const url = new URL(req.url, 'http://localhost');
 		const p = url.pathname;
 		if (p === '/__requests') return json(res, 200, requests);
-		if (!p.startsWith('/api/')) return handler(req, res);
+		if (!p.startsWith('/api/') && p !== '/__emit') return handler(req, res);
 
 		const body = ['POST', 'PATCH', 'PUT'].includes(req.method) ? await readBody(req) : null;
 		requests.push({ method: req.method, path: p, body });
 
 		if (p === '/api/users/@me') return json(res, 200, f.user);
+		if (p === '/api/guilds') return json(res, 200, [f.portalGuild]);
+		if (p === `/api/guilds/${f.GUILD_ID}`) return json(res, 200, f.portalGuild);
+		const base = `/api/guilds/${f.GUILD_ID}/tickets`;
+		if (p === base) {
+			const open = url.searchParams.get('open');
+			const q = (url.searchParams.get('q') ?? '').toLowerCase();
+			let list = tickets.filter(
+				(t) =>
+					(open === null || open === '' || String(t.open) === open) &&
+					(!q || (t.topic ?? '').toLowerCase().includes(q) || String(t.number) === q)
+			);
+			list = list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+			return json(res, 200, { tickets: list, users: f.portalUsers, next: null });
+		}
+		const m = p.match(new RegExp(`^${base}/(\\d+)(/messages|/close|/events)?$`));
+		if (m) {
+			const [, id, sub] = m;
+			const ticket = tickets.find((t) => t.id === id);
+			if (!ticket) return json(res, 404, { error: 'Not Found', message: 'Unknown ticket' });
+			if (!sub && req.method === 'GET') {
+				return json(res, 200, {
+					...ticket,
+					// same shape as the bot's GET /tickets/:ticket (no users map)
+					questionAnswers: [
+						{ label: 'Email', questionId: 'q1', type: 'TEXT', value: 'me@example.com' }
+					],
+					closedReason: ticket.closedReason ?? null,
+					feedback: null,
+					permissions: { isStaff: false, canReply: ticket.open, canClose: ticket.open }
+				});
+			}
+			if (sub === '/messages' && req.method === 'GET') {
+				return json(res, 200, { messages: messages[id], next: null });
+			}
+			if (sub === '/messages' && req.method === 'POST') {
+				if (req.headers['content-type'] !== 'application/json')
+					return json(res, 415, { error: 'JSON only' });
+				const { content } = JSON.parse(body);
+				if (!ticket.open)
+					return json(res, 403, { error: 'Forbidden', message: 'This ticket is closed.' });
+				if (!content || content.length > 2000)
+					return json(res, 400, {
+						error: 'Bad Request',
+						message: 'content must be 1-2000 characters'
+					});
+				const message = {
+					id: String(BigInt('500000000000000000') + BigInt(messages[id].length)),
+					author: {
+						id: f.user.id,
+						username: 'admin',
+						displayName: 'Admin',
+						avatar: null,
+						bot: false,
+						roleColour: null
+					},
+					content,
+					embeds: [],
+					attachments: [],
+					createdAt: new Date().toISOString(),
+					editedAt: null,
+					deleted: false,
+					viaWeb: true
+				};
+				messages[id].push(message);
+				emit(id, 'message', message);
+				return json(res, 201, { message });
+			}
+			if (sub === '/close' && req.method === 'POST') {
+				ticket.open = false;
+				ticket.closedAt = new Date().toISOString();
+				ticket.closedReason = JSON.parse(body || '{}').reason ?? null;
+				emit(id, 'ticket-closed', { id });
+				return json(res, 200, { closed: true });
+			}
+			if (sub === '/events') {
+				res.writeHead(200, {
+					'content-type': 'text/event-stream',
+					'cache-control': 'no-cache',
+					connection: 'keep-alive'
+				});
+				res.write(`event: ready\ndata: ${JSON.stringify({ ticketId: id })}\n\n`);
+				if (!streams.has(id)) streams.set(id, new Set());
+				streams.get(id).add(res);
+				req.on('close', () => streams.get(id).delete(res));
+				return;
+			}
+		}
+		if (p === '/__emit' && req.method === 'POST') {
+			const { ticket, event, data } = JSON.parse(body);
+			emit(ticket, event, data);
+			return json(res, 200, { ok: true });
+		}
 		if (p === '/api/client') return json(res, 200, f.client);
 		if (p === '/api/admin/guilds') return json(res, 200, [f.guild]);
 		if (p === g) return json(res, 200, f.guild);

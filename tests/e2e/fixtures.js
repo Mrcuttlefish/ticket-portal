@@ -128,3 +128,154 @@ export const category = () => ({
 		}
 	]
 });
+
+// ---- portal (archive / replies) ----
+export const STAFF_ID = '200000000000000001';
+export const OPEN_TICKET = '300000000000000001';
+export const CLOSED_TICKET = '300000000000000002';
+export const CLOSABLE_TICKET = '300000000000000003';
+
+export const portalGuild = { id: GUILD_ID, name: 'Test Server', logo: null, privilegeLevel: 1 };
+
+export const portalUsers = {
+	[user.id]: { username: 'admin', displayName: 'Admin', avatar: null },
+	[STAFF_ID]: { username: 'helper', displayName: 'Helpful Staff', avatar: null }
+};
+
+const supportCategory = { id: CATEGORY_ID, name: 'Support', emoji: '🎫' };
+
+export const portalTickets = () => [
+	{
+		id: OPEN_TICKET,
+		number: 12,
+		topic: 'Cannot log in',
+		open: true,
+		category: supportCategory,
+		createdById: user.id,
+		claimedById: STAFF_ID,
+		createdAt: '2026-11-01T10:00:00.000Z',
+		closedAt: null,
+		messageCount: 3
+	},
+	{
+		id: CLOSED_TICKET,
+		number: 11,
+		topic: 'Refund <img src=x onerror=alert(1)>',
+		open: false,
+		category: supportCategory,
+		createdById: user.id,
+		claimedById: null,
+		createdAt: '2026-10-01T10:00:00.000Z',
+		closedAt: '2026-10-02T10:00:00.000Z',
+		// an anonymous category: members see staff as user "0"
+		closedById: '0',
+		closedReason: 'Refund issued',
+		messageCount: 2
+	},
+	{
+		id: CLOSABLE_TICKET,
+		number: 13,
+		topic: 'Close me',
+		open: true,
+		category: supportCategory,
+		createdById: user.id,
+		claimedById: null,
+		createdAt: '2026-11-02T10:00:00.000Z',
+		closedAt: null,
+		messageCount: 0
+	}
+];
+
+const author = (id, extra = {}) => ({
+	id,
+	username: portalUsers[id].username,
+	displayName: portalUsers[id].displayName,
+	avatar: null,
+	bot: false,
+	roleColour: id === STAFF_ID ? '#3498db' : null,
+	...extra
+});
+
+export const portalMessages = () => ({
+	[OPEN_TICKET]: [
+		{
+			id: '400000000000000001',
+			author: author(user.id),
+			content: 'I **cannot** log in, see <@' + STAFF_ID + '>',
+			embeds: [],
+			attachments: [
+				{
+					name: 'screenshot.png',
+					url: 'https://cdn.discordapp.com/attachments/1/2/screenshot.png',
+					contentType: 'image/png',
+					size: 1024
+				},
+				{
+					name: 'log.txt',
+					url: 'https://cdn.discordapp.com/attachments/1/3/log.txt',
+					contentType: 'text/plain',
+					size: 2048,
+					expired: true
+				}
+			],
+			createdAt: '2026-11-01T10:01:00.000Z',
+			editedAt: null,
+			deleted: false,
+			viaWeb: false
+		},
+		{
+			id: '400000000000000002',
+			author: author(STAFF_ID),
+			content: 'Try resetting your password. <script>alert(1)</script> [x](javascript:alert(1))',
+			embeds: [{ title: 'Password reset', description: 'Go to *settings*' }],
+			attachments: [],
+			createdAt: '2026-11-01T10:05:00.000Z',
+			editedAt: '2026-11-01T10:06:00.000Z',
+			deleted: false,
+			viaWeb: false
+		},
+		{
+			id: '400000000000000003',
+			author: author(user.id),
+			content: 'this was deleted',
+			embeds: [],
+			attachments: [],
+			createdAt: '2026-11-01T10:07:00.000Z',
+			editedAt: null,
+			deleted: true,
+			viaWeb: true
+		}
+	],
+	[CLOSED_TICKET]: [
+		{
+			id: '400000000000000010',
+			author: author(user.id),
+			content: 'Refund please',
+			embeds: [],
+			attachments: [],
+			createdAt: '2026-10-01T10:01:00.000Z',
+			editedAt: null,
+			deleted: false,
+			viaWeb: false
+		},
+		{
+			id: '400000000000000011',
+			author: {
+				id: '0',
+				username: 'staff',
+				displayName: 'Staff',
+				avatar: null,
+				bot: false,
+				roleColour: null
+			},
+			content: 'Done, refund issued.',
+			embeds: [],
+			attachments: [],
+			createdAt: '2026-10-02T09:00:00.000Z',
+			editedAt: null,
+			deleted: false,
+			viaWeb: false
+		}
+	],
+	[CLOSABLE_TICKET]: []
+});

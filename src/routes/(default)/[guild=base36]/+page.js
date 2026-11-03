@@ -1,9 +1,6 @@
-import { importJSON } from '$lib/i18n';
+import { redirect } from '@sveltejs/kit';
 
 /** @type {import('./$types').PageLoad} */
-export async function load({ parent }) {
-	const { locale } = await parent();
-	return {
-		translations: importJSON(await import(`../../../lib/locales/${locale}/_common.json`))
-	};
+export function load({ params }) {
+	redirect(307, `/${params.guild}/tickets`);
 }
