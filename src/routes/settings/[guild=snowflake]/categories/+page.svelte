@@ -7,7 +7,18 @@
 	const { categories } = data;
 </script>
 
-<h1 class="m-4 text-center text-4xl font-bold">Categories</h1>
+<div class="mx-auto mb-6 max-w-5xl px-4">
+	<h1 class="text-3xl font-bold">Categories</h1>
+	<p class="text-gray-500 dark:text-slate-400">
+		Each category is a type of ticket with its own staff, questions and limits.
+		<a
+			href="https://discordtickets.app/configuration/categories"
+			target="_blank"
+			rel="noopener noreferrer"
+			class="text-blurple hover:underline">Documentation</a
+		>
+	</p>
+</div>
 <div class="m-2 mx-auto max-w-lg p-4">
 	<div class="grid grid-cols-1 gap-4">
 		<a href="./categories/new">

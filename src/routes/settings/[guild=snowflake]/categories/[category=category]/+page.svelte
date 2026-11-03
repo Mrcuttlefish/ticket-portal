@@ -9,6 +9,8 @@
 	import { questionsState as qS } from '$components/state.svelte';
 	import Required from '$components/Required.svelte';
 	import Help from '$components/settings/Help.svelte';
+	import Hint from '$components/settings/Hint.svelte';
+	import Section from '$components/settings/Section.svelte';
 	import RoleSelect from '$components/settings/RoleSelect.svelte';
 	import RoleLimits from '$components/settings/RoleLimits.svelte';
 	import PingRoleRules from '$components/settings/PingRoleRules.svelte';
@@ -216,420 +218,404 @@
 	});
 </script>
 
-<div class="mb-8 text-center text-orange-600 dark:text-orange-400">
-	<p>
-		<i class="fa-solid fa-triangle-exclamation"></i>
+<div class="mx-auto max-w-5xl px-4">
+	<a href="./" class="text-sm text-gray-500 hover:text-blurple dark:text-slate-400"
+		><i class="fa-solid fa-arrow-left"></i> Categories</a
+	>
+	<h1 class="mt-1 text-3xl font-bold">
+		{emoji.get(category.emoji) ?? ''}
+		{category.name || 'New category'}
+	</h1>
+	<p class="text-gray-500 dark:text-slate-400">
 		<a
 			href="https://discordtickets.app/configuration/categories"
-			class="font-semibold hover:underline">Read the documentation</a
+			target="_blank"
+			rel="noopener noreferrer"
+			class="text-blurple hover:underline">Documentation</a
 		>
-		to avoid problems.
 	</p>
 </div>
-<h1 class="m-4 text-center text-4xl font-bold">Categories</h1>
-<h2 class="m-4 text-center text-2xl font-semibold text-gray-500 dark:text-slate-400">
-	{emoji.get(category.emoji) ?? ''}
-	{category.name || 'New category'}
-</h2>
 <div class="m-2 mx-auto max-w-5xl p-4 text-lg">
 	{#if error}
 		<ErrorBox {error} />
 	{/if}
 	<form onsubmit={preventDefault(() => submit())} onchange={() => (modified = true)} class="my-4">
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-12">
-			<div class="grid grid-cols-1 gap-8">
-				<div>
-					<label class="font-medium">
-						Name
-						<Required />
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="The name of the category"
-						></i>
-						<input type="text" class="input form-input" required bind:value={category.name} />
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Channel name
-						{#if category.id}
+			<div class="flex flex-col gap-6">
+				<Section
+					id="basics"
+					title="Basics"
+					icon="fa-solid fa-circle-info"
+					description="How the category appears in panels and menus."
+				>
+					<div>
+						<label class="font-medium">
+							Name
 							<Required />
+							<input type="text" class="input form-input" required bind:value={category.name} />
+							<Hint>The name of the category</Hint>
+						</label>
+					</div>
+					<div>
+						<label class="font-medium">
+							Description
+							<Required />
+							<input
+								type="text"
+								class="input form-input"
+								required
+								bind:value={category.description}
+							/>
+							<Hint>What is this category for?</Hint>
+						</label>
+					</div>
+					<div>
+						<label class="font-medium">
+							Emoji
+							<Required />
+							<span class="text-2xl">{emoji.get(category.emoji) ?? ''}</span>
+							<input type="text" class="input form-input" required bind:value={category.emoji} />
+							<Hint>Emoji used for buttons & dropdowns</Hint>
+						</label>
+					</div>
+					<div>
+						<label class="font-medium">
+							Image
+							<input type="url" class="input form-input" bind:value={category.image} />
+							<Hint>A link to an image to be sent with the opening message.</Hint>
+						</label>
+					</div>
+				</Section>
+				<Section id="channels" title="Ticket channels" icon="fa-solid fa-hashtag">
+					<div>
+						<label class="font-medium">
+							Discord category
+							<Required />
+							<select class="input form-multiselect" required bind:value={category.discordCategory}>
+								{#if !category.discordCategory || category.discordCategory === 'new'}
+									<option value="new">Create a new category</option>
+									<hr />
+								{/if}
+								{#each channels as channel}
+									<option value={channel.id} class="p-1">
+										<!-- <i class="fa-solid fa-hashtag text-gray-500 dark:text-slate-400" /> -->
+										{channel.name}
+									</option>
+								{/each}
+							</select>
+							<Hint>Which category channel should ticket channels be created under?</Hint>
+						</label>
+					</div>
+					<div>
+						<label class="font-medium">
+							Channel name
+							{#if category.id}
+								<Required />
+							{/if}
+							<input
+								type="text"
+								class="input form-input"
+								placeholder="ticket-{'{'}num{'}'}"
+								required={!!category.id}
+								bind:value={category.channelName}
+							/>
+							<Hint>The name of ticket channels</Hint>
+						</label>
+						{#if category.channelName}
+							<p class="mb-1 mt-2 text-sm font-semibold">Preview</p>
+							<div
+								class="block w-full break-words rounded-md bg-blurple/20 p-3 font-mono text-sm shadow-sm dark:bg-blurple/20"
+							>
+								<i class="fa-solid fa-hashtag text-gray-500 dark:text-slate-400"></i>
+								<span class="marked">
+									<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
+									{@html renderMarkdown(category.channelName.replace(/\n/g, '\n\n'), [
+										[/{+\s?num(ber)?\s?}+/gi, 1],
+										[/{+\s?(nick|display)(name)?\s?}+/gi, getContext('user').username],
+										[/{+\s?(user)?name\s?}+/gi, getContext('user').username]
+									])}
+								</span>
+							</div>
 						{/if}
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="The name of ticket channels"
-						></i>
-						<input
-							type="text"
-							class="input form-input"
-							placeholder="ticket-{'{'}num{'}'}"
-							required={!!category.id}
-							bind:value={category.channelName}
-						/>
-					</label>
-					{#if category.channelName}
-						<p class="mb-1 mt-2 text-sm font-semibold">Preview</p>
-						<div
-							class="block w-full break-words rounded-md bg-blurple/20 p-3 font-mono text-sm shadow-sm dark:bg-blurple/20"
-						>
-							<i class="fa-solid fa-hashtag text-gray-500 dark:text-slate-400"></i>
-							<span class="marked">
-								<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
-								{@html renderMarkdown(category.channelName.replace(/\n/g, '\n\n'), [
-									[/{+\s?num(ber)?\s?}+/gi, 1],
-									[/{+\s?(nick|display)(name)?\s?}+/gi, getContext('user').username],
-									[/{+\s?(user)?name\s?}+/gi, getContext('user').username]
-								])}
-							</span>
-						</div>
-					{/if}
-				</div>
-				<div>
-					<label for="claiming" class="font-medium">
-						Claiming
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Allow staff to claim tickets?"
-						></i>
-						<input
-							type="checkbox"
-							id="claiming"
-							name="claiming"
-							class="form-checkbox"
-							bind:checked={category.claiming}
-						/>
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Cooldown
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="How long should members have to wait before creating another ticket?"
-						></i>
-						<input type="text" class="input form-input" bind:value={category.cooldown} />
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Description
-						<Required />
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="What is this category for?"
-						></i>
-						<input
-							type="text"
-							class="input form-input"
-							required
-							bind:value={category.description}
-						/>
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Discord category
-						<Required />
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Which category channel should ticket channels be created under?"
-						></i>
-						<select class="input form-multiselect" required bind:value={category.discordCategory}>
-							{#if !category.discordCategory || category.discordCategory === 'new'}
-								<option value="new">Create a new category</option>
-								<hr />
-							{/if}
-							{#each channels as channel}
-								<option value={channel.id} class="p-1">
-									<!-- <i class="fa-solid fa-hashtag text-gray-500 dark:text-slate-400" /> -->
-									{channel.name}
-								</option>
-							{/each}
-						</select>
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Emoji
-						<Required />
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Emoji used for buttons & dropdowns"
-						></i>
-						<span class="text-2xl">{emoji.get(category.emoji) ?? ''}</span>
-						<input type="text" class="input form-input" required bind:value={category.emoji} />
-					</label>
-				</div>
-				<div>
-					<label for="enableFeedback" class="font-medium">
-						Feedback
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Gather feedback from members?"
-						></i>
-						<input
-							type="checkbox"
-							id="enableFeedback"
-							name="enableFeedback"
-							class="form-checkbox"
-							bind:checked={category.enableFeedback}
-						/>
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Image
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="A link to an image to be sent with the opening message."
-						></i>
-						<input type="url" class="input form-input" bind:value={category.image} />
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Member limit
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="How many tickets in this category can each member have open?"
-						></i>
-						<input
-							type="number"
-							min="1"
-							max="10"
-							class="input form-input"
-							bind:value={category.memberLimit}
-						/>
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Opening message
-						<Required />
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Content to be sent in the opening message of each ticket."
-						></i>
-						<textarea
-							class="input form-input"
-							required
-							rows="4"
-							maxlength="1000"
-							bind:value={category.openingMessage}
-						></textarea>
-					</label>
-					{#key category.pingRoles}
-						{#key category.requireTopic}
-							{#if category.openingMessage}
-								<p class="mb-1 mt-2 text-sm font-semibold">Preview</p>
-								<discord-messages
-									no-background={true}
-									light-theme={data.theme !== 'dark'}
-									class="bloc w-full border-0"
-								>
-									<discord-message
-										author={data.client.username}
-										avatar={data.client.avatar}
-										bot={true}
-										timestamp={`Today at ${new Date().toLocaleTimeString('default', {
-											hour: 'numeric',
-											minute: 'numeric'
-										})}`}
-										class="py-2"
-										highlight
-									>
-										{#if category.pingRoles?.length > 0}
-											{#each category.pingRoles as id, index}
-												{@const role = getRole(id)}
-												{#if role}
-													{#if index > 0}
-														{' '}
-													{/if}
-													<discord-mention color={role?._hexColor} type="role">
-														{role?.name}
-													</discord-mention>
-												{/if}
-											{/each}
-											, <br />
-										{/if}
-										<discord-mention highlight>{data.user.username}</discord-mention>
-										has created a new ticket
-										<discord-embed
-											slot="embeds"
-											color={data.settings.primaryColour}
-											author-image={`https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.webp`}
-											author-name={data.user.username}
-											image={category.image}
-										>
-											<discord-embed-description
-												slot="description"
-												class="prose prose-sm prose-slate break-words dark:prose-invert prose-a:text-blurple"
-											>
-												<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
-												{@html renderMarkdown(category.openingMessage, [
-													[
-														/{+\s?(user)?name\s?}+/gi,
-														`<discord-mention>${escapeHTML(data.user.username)}</discord-mention>`,
-														{ html: true }
-													],
-													[/{+\s?avgResponseTime\s?}+/gi, data.guild.stats.avgResponseTime],
-													[/{+\s?avgResolutionTime\s?}+/gi, data.guild.stats.avgResolutionTime]
-												])}
-											</discord-embed-description>
-											{#if category.requireTopic}
-												<discord-embed-fields slot="fields">
-													<discord-embed-field field-title="Topic">
-														This is a pretty good preview
-													</discord-embed-field>
-												</discord-embed-fields>
-											{/if}
-											{#if data.settings.footer}
-												<discord-embed-footer slot="footer" footer-image={data.client.avatar}>
-													{data.settings.footer}
-												</discord-embed-footer>
-											{/if}
-										</discord-embed>
-										<discord-attachments slot="components">
-											<discord-action-row>
-												{#if category.requireTopic || qS.questions.length > 0}
-													<discord-button type="secondary">✏️ Edit</discord-button>
-												{/if}
-												{#if category.claiming && data.settings.claimButton}
-													<discord-button type="secondary">🙌 Claim</discord-button>
-												{/if}
-												{#if data.settings.closeButton}
-													<discord-button type="destructive">✖️ Close</discord-button>
-												{/if}
-											</discord-action-row>
-										</discord-attachments>
-									</discord-message>
-								</discord-messages>
-							{/if}
-						{/key}
-					{/key}
-				</div>
-				<div>
-					<label class="font-medium">
-						Ping roles
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Roles that should be pinged upon ticket creation."
-						></i>
-						<select
-							multiple
-							class="input form-multiselect h-44 font-normal"
-							bind:value={category.pingRoles}
-						>
-							{#each roles as role}
-								<option value={role.id} class="m-1 rounded p-1" style={role._style}>
-									<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" style={role._style} /> -->
-									{role.unicodeEmoji || ''}
-									{role.name}
-								</option>
-							{/each}
-						</select>
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Slow mode
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Should slow mode be enabled?"
-						></i>
-						<select class="input form-multiselect font-normal" bind:value={category.ratelimit}>
-							<option value={null} class="p-1">
-								<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" /> -->
-								Off
-							</option>
-							{#each slowmodes as slowmode}
-								<option value={ms(slowmode) / 1000} class="p-1">
+					</div>
+					<div>
+						<label class="font-medium">
+							Slow mode
+							<select class="input form-multiselect font-normal" bind:value={category.ratelimit}>
+								<option value={null} class="p-1">
 									<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" /> -->
-									{slowmode}
+									Off
 								</option>
-							{/each}
-						</select>
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Required roles
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Roles that a user needs to create a ticket."
-						></i>
-						<select
-							multiple
-							class="input form-multiselect h-44 font-normal"
-							bind:value={category.requiredRoles}
-						>
-							{#each roles as role}
-								<option value={role.id} class="m-1 rounded p-1" style={role._style}>
-									<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" style={role._style} /> -->
-									{role.unicodeEmoji || ''}
-									{role.name}
-								</option>
-							{/each}
-						</select>
-					</label>
-				</div>
-				<div>
-					<label for="requireTopic" class="font-medium">
-						Require topic
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Require a topic before ticket creation?"
-						></i>
-						<input
-							type="checkbox"
-							id="requireTopic"
-							name="requireTopic"
-							class="form-checkbox"
-							disabled={qS.questions.length > 0}
-							bind:checked={category.requireTopic}
-						/>
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Staff roles
-						<Required />
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Roles that will be able to view tickets."
-						></i>
-						<select
-							multiple
-							required
-							class="input form-multiselect h-44 font-normal"
-							bind:value={category.staffRoles}
-						>
-							{#each roles as role}
-								<option value={role.id} class="m-1 rounded p-1" style={role._style}>
-									<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" style={role._style} /> -->
-									{role.unicodeEmoji || ''}
-									{role.name}
-								</option>
-							{/each}
-						</select>
-					</label>
-				</div>
-				<div>
-					<label class="font-medium">
-						Total limit
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="The total number of tickets that can be open at once."
-						></i>
-						<input
-							type="number"
-							min="1"
-							max="50"
-							class="input form-input"
-							bind:value={category.totalLimit}
-						/>
-					</label>
-				</div>
+								{#each slowmodes as slowmode}
+									<option value={ms(slowmode) / 1000} class="p-1">
+										<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" /> -->
+										{slowmode}
+									</option>
+								{/each}
+							</select>
+							<Hint>Should slow mode be enabled?</Hint>
+						</label>
+					</div>
+				</Section>
+				<Section id="access" title="Access and pings" icon="fa-solid fa-user-shield">
+					<div>
+						<label class="font-medium">
+							Staff roles
+							<Required />
+							<select
+								multiple
+								required
+								class="input form-multiselect h-44 font-normal"
+								bind:value={category.staffRoles}
+							>
+								{#each roles as role}
+									<option value={role.id} class="m-1 rounded p-1" style={role._style}>
+										<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" style={role._style} /> -->
+										{role.unicodeEmoji || ''}
+										{role.name}
+									</option>
+								{/each}
+							</select>
+							<Hint>Roles that will be able to view tickets.</Hint>
+						</label>
+					</div>
+					<div>
+						<label class="font-medium">
+							Required roles
+							<select
+								multiple
+								class="input form-multiselect h-44 font-normal"
+								bind:value={category.requiredRoles}
+							>
+								{#each roles as role}
+									<option value={role.id} class="m-1 rounded p-1" style={role._style}>
+										<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" style={role._style} /> -->
+										{role.unicodeEmoji || ''}
+										{role.name}
+									</option>
+								{/each}
+							</select>
+							<Hint>Roles that a user needs to create a ticket.</Hint>
+						</label>
+					</div>
+					<div>
+						<label class="font-medium">
+							Ping roles
+							<select
+								multiple
+								class="input form-multiselect h-44 font-normal"
+								bind:value={category.pingRoles}
+							>
+								{#each roles as role}
+									<option value={role.id} class="m-1 rounded p-1" style={role._style}>
+										<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" style={role._style} /> -->
+										{role.unicodeEmoji || ''}
+										{role.name}
+									</option>
+								{/each}
+							</select>
+							<Hint>Roles that should be pinged upon ticket creation.</Hint>
+						</label>
+					</div>
+				</Section>
+				<Section id="opening" title="Opening message" icon="fa-solid fa-message">
+					<div>
+						<label class="font-medium">
+							Opening message
+							<Required />
+							<textarea
+								class="input form-input"
+								required
+								rows="4"
+								maxlength="1000"
+								bind:value={category.openingMessage}
+							></textarea>
+							<Hint>Content to be sent in the opening message of each ticket.</Hint>
+						</label>
+						{#key category.pingRoles}
+							{#key category.requireTopic}
+								{#if category.openingMessage}
+									<p class="mb-1 mt-2 text-sm font-semibold">Preview</p>
+									<discord-messages
+										no-background={true}
+										light-theme={data.theme !== 'dark'}
+										class="bloc w-full border-0"
+									>
+										<discord-message
+											author={data.client.username}
+											avatar={data.client.avatar}
+											bot={true}
+											timestamp={`Today at ${new Date().toLocaleTimeString('default', {
+												hour: 'numeric',
+												minute: 'numeric'
+											})}`}
+											class="py-2"
+											highlight
+										>
+											{#if category.pingRoles?.length > 0}
+												{#each category.pingRoles as id, index}
+													{@const role = getRole(id)}
+													{#if role}
+														{#if index > 0}
+															{' '}
+														{/if}
+														<discord-mention color={role?._hexColor} type="role">
+															{role?.name}
+														</discord-mention>
+													{/if}
+												{/each}
+												, <br />
+											{/if}
+											<discord-mention highlight>{data.user.username}</discord-mention>
+											has created a new ticket
+											<discord-embed
+												slot="embeds"
+												color={data.settings.primaryColour}
+												author-image={`https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.webp`}
+												author-name={data.user.username}
+												image={category.image}
+											>
+												<discord-embed-description
+													slot="description"
+													class="prose prose-sm prose-slate break-words dark:prose-invert prose-a:text-blurple"
+												>
+													<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
+													{@html renderMarkdown(category.openingMessage, [
+														[
+															/{+\s?(user)?name\s?}+/gi,
+															`<discord-mention>${escapeHTML(data.user.username)}</discord-mention>`,
+															{ html: true }
+														],
+														[/{+\s?avgResponseTime\s?}+/gi, data.guild.stats.avgResponseTime],
+														[/{+\s?avgResolutionTime\s?}+/gi, data.guild.stats.avgResolutionTime]
+													])}
+												</discord-embed-description>
+												{#if category.requireTopic}
+													<discord-embed-fields slot="fields">
+														<discord-embed-field field-title="Topic">
+															This is a pretty good preview
+														</discord-embed-field>
+													</discord-embed-fields>
+												{/if}
+												{#if data.settings.footer}
+													<discord-embed-footer slot="footer" footer-image={data.client.avatar}>
+														{data.settings.footer}
+													</discord-embed-footer>
+												{/if}
+											</discord-embed>
+											<discord-attachments slot="components">
+												<discord-action-row>
+													{#if category.requireTopic || qS.questions.length > 0}
+														<discord-button type="secondary">✏️ Edit</discord-button>
+													{/if}
+													{#if category.claiming && data.settings.claimButton}
+														<discord-button type="secondary">🙌 Claim</discord-button>
+													{/if}
+													{#if data.settings.closeButton}
+														<discord-button type="destructive">✖️ Close</discord-button>
+													{/if}
+												</discord-action-row>
+											</discord-attachments>
+										</discord-message>
+									</discord-messages>
+								{/if}
+							{/key}
+						{/key}
+					</div>
+					<div>
+						<label for="requireTopic" class="font-medium">
+							Require topic
+							<input
+								type="checkbox"
+								id="requireTopic"
+								name="requireTopic"
+								class="form-checkbox"
+								disabled={qS.questions.length > 0}
+								bind:checked={category.requireTopic}
+							/>
+							<Hint>Require a topic before ticket creation?</Hint>
+						</label>
+					</div>
+				</Section>
+				<Section id="limits" title="Limits" icon="fa-solid fa-gauge">
+					<div>
+						<label class="font-medium">
+							Member limit
+							<input
+								type="number"
+								min="1"
+								max="10"
+								class="input form-input"
+								bind:value={category.memberLimit}
+							/>
+							<Hint>How many tickets in this category can each member have open?</Hint>
+						</label>
+					</div>
+					<div>
+						<label class="font-medium">
+							Total limit
+							<input
+								type="number"
+								min="1"
+								max="50"
+								class="input form-input"
+								bind:value={category.totalLimit}
+							/>
+							<Hint>The total number of tickets that can be open at once.</Hint>
+						</label>
+					</div>
+					<div>
+						<label class="font-medium">
+							Cooldown
+							<input type="text" class="input form-input" bind:value={category.cooldown} />
+							<Hint>How long should members have to wait before creating another ticket?</Hint>
+						</label>
+					</div>
+				</Section>
+				<Section id="features" title="Features" icon="fa-solid fa-toggle-on">
+					<div>
+						<label for="anonymous" class="font-medium">
+							Anonymous staff
+							<input
+								type="checkbox"
+								id="anonymous"
+								name="anonymous"
+								class="form-checkbox"
+								bind:checked={category.anonymous}
+							/>
+							<Hint
+								>Staff replies are posted by the bot as "Staff", so members can't see which staff
+								member answered.</Hint
+							>
+						</label>
+					</div>
+					<div>
+						<label for="claiming" class="font-medium">
+							Claiming
+							<input
+								type="checkbox"
+								id="claiming"
+								name="claiming"
+								class="form-checkbox"
+								bind:checked={category.claiming}
+							/>
+							<Hint>Allow staff to claim tickets?</Hint>
+						</label>
+					</div>
+					<div>
+						<label for="enableFeedback" class="font-medium">
+							Feedback
+							<input
+								type="checkbox"
+								id="enableFeedback"
+								name="enableFeedback"
+								class="form-checkbox"
+								bind:checked={category.enableFeedback}
+							/>
+							<Hint>Gather feedback from members?</Hint>
+						</label>
+					</div>
+				</Section>
 				<details
 					class="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-700"
 					bind:open={showAdvanced}
@@ -823,7 +809,7 @@
 						{#if loadingSubmit}
 							<i class="fa-solid fa-spinner animate-spin"></i>
 						{/if}
-						Submit
+						Save category
 					</button>
 				</div>
 			</div>

@@ -29,11 +29,13 @@
 
 	function add() {
 		if (options.length >= MAX_OPTIONS) return;
+		let n = options.length + 1;
+		while (options.some((o) => o.label.trim() === `Option ${n}`)) n++;
 		const option = {
 			id: uuidv4(),
 			description: '',
 			emoji: '',
-			label: `Option ${options.length + 1}`,
+			label: `Option ${n}`,
 			value: ''
 		};
 		options.push(option);
@@ -56,13 +58,30 @@
 			error = 'Add at least one option.';
 			return;
 		}
-		const missing = options.find((o) => !o.label.trim() || !o.value.trim());
+		const missing = options.find((o) => !o.label.trim());
 		if (missing) {
 			expanded = missing.id;
-			error = 'Every option needs a label and a value.';
+			error = 'Every option needs a label.';
 			return;
 		}
-		question.options = $state.snapshot(options);
+		const seen = new Set();
+		const duplicate = options.find((o) => {
+			const label = o.label.trim();
+			if (seen.has(label)) return true;
+			seen.add(label);
+			return false;
+		});
+		if (duplicate) {
+			expanded = duplicate.id;
+			error = `Two options are called "${duplicate.label.trim()}". Each option needs a different label.`;
+			return;
+		}
+		// the label is what's stored and shown in placeholders, so keep value in step for older bots
+		question.options = $state.snapshot(options).map((o) => ({
+			...o,
+			label: o.label.trim(),
+			value: o.label.trim()
+		}));
 		close();
 	}
 </script>
@@ -173,22 +192,8 @@
 											<input
 												type="text"
 												class="input form-input text-sm"
-												maxlength="100"
+												maxlength="64"
 												bind:value={o.emoji}
-											/>
-										</label>
-										<label class="font-medium">
-											Value
-											<Required />
-											<span class="text-sm font-normal text-gray-500 dark:text-slate-400">
-												(the text stored and used in placeholders)
-											</span>
-											<input
-												type="text"
-												class="input form-input text-sm"
-												required
-												maxlength="100"
-												bind:value={o.value}
 											/>
 										</label>
 									</div>

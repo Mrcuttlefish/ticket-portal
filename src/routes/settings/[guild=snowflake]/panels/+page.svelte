@@ -5,6 +5,7 @@
 	import MultiSelect from 'svelte-multiselect';
 	import emoji from 'emoji-name-map';
 	import Required from '$components/Required.svelte';
+	import Hint from '$components/settings/Hint.svelte';
 	import ErrorBox from '$components/ErrorBox.svelte';
 	/**
 	 * @typedef {Object} Props
@@ -77,7 +78,18 @@
 	});
 </script>
 
-<h1 class="m-4 text-center text-4xl font-bold">Create a panel</h1>
+<div class="mx-auto mb-6 max-w-5xl px-4">
+	<h1 class="text-3xl font-bold">Create a panel</h1>
+	<p class="text-gray-500 dark:text-slate-400">
+		Send a message members can use to open tickets.
+		<a
+			href="https://discordtickets.app/configuration/panels"
+			target="_blank"
+			rel="noopener noreferrer"
+			class="text-blurple hover:underline">Documentation</a
+		>
+	</p>
+</div>
 <div class="m-2 mx-auto max-w-3xl sm:p-4">
 	{#if error}
 		<ErrorBox {error} />
@@ -104,10 +116,6 @@
 				<div>
 					<label>
 						<span class="font-medium">Type</span>
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="How will members use the panel?"
-						></i>
 						<select class="input form-multiselect font-normal" required bind:value={panel.type}>
 							<option value="BUTTON" class="p-1" disabled={panel.categories.length > 5}>
 								<!-- <i class="fa-solid fa-at text-gray-500 dark:text-slate-400" default /> -->
@@ -122,15 +130,12 @@
 								Message
 							</option> -->
 						</select>
+						<Hint>How will members use the panel?</Hint>
 					</label>
 				</div>
 				<div>
 					<label class="font-medium">
 						<span class="font-medium">Channel</span>
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="The channel to send the panel message to"
-						></i>
 						<select required class="input form-multiselect font-normal" bind:value={panel.channel}>
 							<option value="new">Create a new channel</option>
 							<hr />
@@ -142,16 +147,13 @@
 								</option>
 							{/each}
 						</select>
+						<Hint>The channel to send the panel message to</Hint>
 					</label>
 				</div>
 				<div>
 					<label class="font-medium">
 						<span class="font-medium">Categories</span>
 						<Required />
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="The category options to be available"
-						></i>
 						<MultiSelect
 							bind:selected={selectedCategories}
 							outerDivClass="text-base my-1 p-2 rounded-md border-transparent bg-gray-100 dark:bg-slate-800 font-normal shadow-sm transition-colors has-[:focus]:ring-2 has-[:focus]:ring-blurple"
@@ -169,47 +171,36 @@
 							maxSelect={panel.type === 'MENU' ? 25 : 5}
 							options={Object.keys(categoryOptions)}
 						/>
+						<Hint>The category options to be available</Hint>
 					</label>
 				</div>
 				<div>
 					<label>
 						<span class="font-medium">Title</span>
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="The embed title"
-						></i>
 						<input type="text" class="input form-input" required bind:value={panel.title} />
+						<Hint>The embed title</Hint>
 					</label>
 				</div>
 				<div>
 					<label>
 						<span class="font-medium">Large image</span>
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Optional - the embed image"
-						></i>
 						<input type="url" class="input form-input" bind:value={panel.image} />
+						<Hint>Optional - the embed image</Hint>
 					</label>
 				</div>
 				<div>
 					<label>
 						<span class="font-medium">Small image (thumbnail)</span>
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Optional - the embed thumbnail"
-						></i>
 						<input type="url" class="input form-input" bind:value={panel.thumbnail} />
+						<Hint>Optional - the embed thumbnail</Hint>
 					</label>
 				</div>
 				<div>
 					<label class="font-medium">
 						<span class="font-medium">Description</span>
-						<i
-							class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
-							title="Optional - the embed description"
-						></i>
 						<textarea class="input form-input h-24" maxlength="4096" bind:value={panel.description}
 						></textarea>
+						<Hint>Optional - the embed description</Hint>
 					</label>
 				</div>
 				<div class="place-self-center">
