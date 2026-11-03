@@ -82,6 +82,7 @@
 			error = null;
 			loading = true;
 			const json = { ...tag };
+			delete json.preventedCount; // read-only
 
 			const response = await fetch(`${url}/${json.id}`, {
 				method: 'PATCH',
@@ -181,6 +182,14 @@
 			{#each shown as tag, i}
 				<div class="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-700">
 					<span class="text-lg font-semibold">{tag.name}</span>
+					{#if tag.preventedCount}
+						<span
+							class="ml-2 rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400"
+							title="Members who saw this tag as a suggestion and didn't open a ticket"
+							>Prevented {tag.preventedCount}
+							{tag.preventedCount === 1 ? 'ticket' : 'tickets'}</span
+						>
+					{/if}
 					<p
 						class="cursor-pointer select-none text-gray-500 transition duration-300 hover:text-blurple dark:text-slate-400 dark:hover:text-blurple"
 						onclick={() => (expanded = expanded === tag.id ? null : tag.id)}

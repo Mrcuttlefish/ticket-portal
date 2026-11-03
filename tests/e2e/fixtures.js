@@ -91,6 +91,7 @@ export const category = () => ({
 	name: 'Support',
 	channelName: 'ticket-{num}',
 	anonymous: false,
+	suggestTags: false,
 	claiming: false,
 	cooldown: null,
 	createdAt: '2024-01-01T00:00:00.000Z',
@@ -279,3 +280,8 @@ export const portalMessages = () => ({
 	],
 	[CLOSABLE_TICKET]: []
 });
+
+export const tags = () => [
+	{ id: 1, name: 'password', content: 'Reset it here.', regex: 'password', preventedCount: 4 },
+	{ id: 2, name: 'refunds', content: 'See the refund policy.', regex: null, preventedCount: 0 }
+];

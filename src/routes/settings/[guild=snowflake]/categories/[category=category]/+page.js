@@ -8,6 +8,7 @@ export async function load({ fetch, params }) {
 		body = {
 			channelName: '',
 			anonymous: false,
+			suggestTags: false,
 			claiming: false,
 			description: '',
 			discordCategory: 'new',
