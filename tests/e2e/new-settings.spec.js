@@ -102,6 +102,7 @@ test.describe('category options', () => {
 		await page.waitForLoadState('networkidle');
 		const body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
 		expect(body).toMatchObject({
+			anonymous: false,
 			archive: null,
 			autoClose: null,
 			blockedRoles: [],
@@ -148,6 +149,14 @@ test.describe('category options', () => {
 		expect(body.closeButton).toBeNull();
 		expect(body.staleAfter).toBe(0);
 		expect(body.autoClose).toBe(12 * 3600 * 1000);
+	});
+
+	test('anonymous staff can be turned on', async ({ page, request }) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await page.getByLabel('Anonymous staff').check();
+		const body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
+		expect(body.anonymous).toBe(true);
 	});
 
 	test('the main Discord category is not offered as a fallback', async ({ page }) => {
