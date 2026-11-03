@@ -224,6 +224,8 @@ test.describe('category options', () => {
 		await page.getByRole('textbox', { name: /^Delete closed channels after/ }).fill('2d');
 		let body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
 		expect(body.keepClosedFor).toBe(2 * 86_400_000);
+		// saving goes back to the category list; let that finish before opening the category again
+		await page.waitForURL(/\/categories\/?$/);
 
 		await page.goto(path);
 		await page.waitForLoadState('networkidle');
@@ -239,6 +241,8 @@ test.describe('category options', () => {
 		await expect(page.getByRole('textbox', { name: /^Opening message/ })).toBeDisabled();
 		let body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
 		expect(body.openingStyle).toBe('OFF');
+		// saving goes back to the category list; let that finish before opening the category again
+		await page.waitForURL(/\/categories\/?$/);
 
 		await page.goto(path);
 		await page.waitForLoadState('networkidle');
