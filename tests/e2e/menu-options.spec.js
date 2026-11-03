@@ -64,7 +64,7 @@ test('saved options are sent to the API', async ({ page, request }) => {
 	await dialog.getByRole('button', { name: 'Save' }).click();
 	await expect(dialog).toBeHidden();
 
-	await page.getByRole('button', { name: 'Submit' }).click();
+	await page.getByRole('button', { name: 'Save category' }).click();
 	let patch;
 	await expect
 		.poll(async () => {
