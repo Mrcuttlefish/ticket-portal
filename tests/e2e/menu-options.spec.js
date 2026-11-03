@@ -69,7 +69,12 @@ test('saved options are sent to the API', async ({ page, request }) => {
 	await expect
 		.poll(async () => {
 			const requests = (await (await request.get('/__requests')).json()).slice(before);
-			patch ??= requests.find((r) => r.method === 'PATCH');
+			patch ??= requests.find(
+				(r) =>
+					r.method === 'PATCH' &&
+					r.path.endsWith(`/categories/${CATEGORY_ID}`) &&
+					JSON.parse(r.body).questions?.[0]?.options?.length === 1
+			);
 			return !!patch;
 		})
 		.toBe(true);
