@@ -1,5 +1,5 @@
 <script>
-	import { getContext, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { modals } from 'svelte-modals';
 	import DataModal from '$components/DataModal.svelte';
 	/** @type {{data: import('./$types').PageData}} */
@@ -26,7 +26,8 @@
 	<a
 		class="underline transition duration-300 hover:text-black dark:hover:text-white"
 		href="https://lnk.earth/dt-warn-pub"
-		target="_blank">https://lnk.earth/dt-warn-pub</a
+		target="_blank"
+		rel="noopener noreferrer">https://lnk.earth/dt-warn-pub</a
 	>.
 {/snippet}
 

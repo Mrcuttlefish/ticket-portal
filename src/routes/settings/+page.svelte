@@ -91,11 +91,15 @@
 			<div class="m-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
 				<div>
 					<h6 class="font-semibold">Activated users</h6>
-					<p class="text-gray-500 dark:text-slate-400">{formatter.format(client.stats.activatedUsers)}</p>
+					<p class="text-gray-500 dark:text-slate-400">
+						{formatter.format(client.stats.activatedUsers)}
+					</p>
 				</div>
 				<div>
 					<h6 class="font-semibold">Archived messages</h6>
-					<p class="text-gray-500 dark:text-slate-400">{formatter.format(client.stats.archivedMessages)}</p>
+					<p class="text-gray-500 dark:text-slate-400">
+						{formatter.format(client.stats.archivedMessages)}
+					</p>
 				</div>
 				<div>
 					<h6 class="font-semibold">Resolution time</h6>
@@ -107,7 +111,9 @@
 				</div>
 				<div>
 					<h6 class="font-semibold">Categories</h6>
-					<p class="text-gray-500 dark:text-slate-400">{formatter.format(client.stats.categories)}</p>
+					<p class="text-gray-500 dark:text-slate-400">
+						{formatter.format(client.stats.categories)}
+					</p>
 				</div>
 				<div>
 					<h6 class="font-semibold">Guilds</h6>

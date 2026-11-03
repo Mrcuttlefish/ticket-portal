@@ -1,6 +1,5 @@
 <script>
 	import Tree from './Tree.svelte';
-	import { marked } from 'marked';
 
 	/** @type {{entry?: any, indent?: number}} */
 	let { entry = [], indent = 0 } = $props();
@@ -21,8 +20,9 @@
 		{/each}
 	{:else}
 		<!-- text-xs -->
-		<p class="prose prose-sm prose-slate ml-2 text-black/75 dark:prose-invert dark:text-white/75">
-			{@html marked.parse(entry)}
+		<!-- rendered as text: entries can contain URL parameters and API error messages -->
+		<p class="ml-2 whitespace-pre-wrap break-words text-sm text-black/75 dark:text-white/75">
+			{entry}
 		</p>
 	{/if}
 </div>

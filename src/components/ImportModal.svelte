@@ -29,6 +29,7 @@
 	);
 	let submitted = $state(false);
 	let logs = $state('');
+	let logsContainer = $state();
 
 	$effect(async () => {
 		if (file) {
@@ -141,6 +142,7 @@
 								bind:this={logsContainer}
 								class="flex max-h-64 flex-col gap-1 overflow-y-auto text-wrap rounded-xl bg-gray-100 p-4 font-mono shadow-sm dark:bg-slate-800"
 							>
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -- the bot escapes every logged value -->
 								{@html logs}
 							</div>
 						{:else}

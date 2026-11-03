@@ -3,7 +3,7 @@
 
 	import ms from 'ms';
 	import emoji from 'emoji-name-map';
-	import { marked } from 'marked';
+	import { escapeHTML, renderMarkdown } from '$lib/util/markdown';
 	import { v4 as uuidv4 } from 'uuid';
 	import CategoryQuestions from '$components/CategoryQuestions/Questions.svelte';
 	import { questionsState as qS } from '$components/state.svelte';
@@ -227,11 +227,12 @@
 						>
 							<i class="fa-solid fa-hashtag text-gray-500 dark:text-slate-400"></i>
 							<span class="marked">
-								{@html marked
-									.parse(category.channelName.replace(/\n/g, '\n\n'))
-									.replace(/{+\s?num(ber)?\s?}+/gi, 1)
-									.replace(/{+\s?(nick|display)(name)?\s?}+/gi, getContext('user').username)
-									.replace(/{+\s?(user)?name\s?}+/gi, getContext('user').username)}
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
+								{@html renderMarkdown(category.channelName.replace(/\n/g, '\n\n'), [
+									[/{+\s?num(ber)?\s?}+/gi, 1],
+									[/{+\s?(nick|display)(name)?\s?}+/gi, getContext('user').username],
+									[/{+\s?(user)?name\s?}+/gi, getContext('user').username]
+								])}
 							</span>
 						</div>
 					{/if}
@@ -413,18 +414,20 @@
 											author-name={data.user.username}
 											image={category.image}
 										>
-											<discord-embed-description slot="description" class="break-words prose prose-slate prose-sm dark:prose-invert prose-a:text-blurple">
-												{@html marked
-													.parse(category.openingMessage)
-													.replace(
+											<discord-embed-description
+												slot="description"
+												class="prose prose-sm prose-slate break-words dark:prose-invert prose-a:text-blurple"
+											>
+												<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
+												{@html renderMarkdown(category.openingMessage, [
+													[
 														/{+\s?(user)?name\s?}+/gi,
-														`<discord-mention>${data.user.username}</discord-mention>`
-													)
-													.replace(/{+\s?avgResponseTime\s?}+/gi, data.guild.stats.avgResponseTime)
-													.replace(
-														/{+\s?avgResolutionTime\s?}+/gi,
-														data.guild.stats.avgResolutionTime
-													)}
+														`<discord-mention>${escapeHTML(data.user.username)}</discord-mention>`,
+														{ html: true }
+													],
+													[/{+\s?avgResponseTime\s?}+/gi, data.guild.stats.avgResponseTime],
+													[/{+\s?avgResolutionTime\s?}+/gi, data.guild.stats.avgResolutionTime]
+												])}
 											</discord-embed-description>
 											{#if category.requireTopic}
 												<discord-embed-fields slot="fields">

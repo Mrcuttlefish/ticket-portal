@@ -1,5 +1,4 @@
 <script>
-	import { modals } from 'svelte-modals';
 	// import OptionsModal from './OptionsModal.svelte';
 	import Required from '../Required.svelte';
 	/** @type {{question: any}} */
@@ -80,7 +79,8 @@
 		<button
 			type="button"
 			class="rounded-lg px-2 font-medium text-yellow-500 transition duration-300 hover:text-yellow-300 disabled:cursor-not-allowed dark:text-yellow-500 dark:hover:text-yellow-500/50"
-			onclick={() => modals.open(OptionsModal, { id: question.id })}
+			disabled
+			title="Editing menu options is unavailable until the options editor is migrated to Svelte 5"
 		>
 			<i class="fa-solid fa-pencil"></i>
 			Edit
