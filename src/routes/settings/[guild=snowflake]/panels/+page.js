@@ -13,7 +13,12 @@ export async function load({ fetch, params }) {
 			categories: body,
 			channels: await (
 				await fetch(`/api/admin/guilds/${params.guild}/data?query=channels.cache`, fetchOptions)
-			).json()
+			).json(),
+			// which layout new and updated panels use; shown so admins can see the setting took effect
+			componentsV2: await fetch(`/api/admin/guilds/${params.guild}/settings`, fetchOptions)
+				.then((r) => (r.ok ? r.json() : {}))
+				.then((s) => s.componentsV2 === true)
+				.catch(() => false)
 		};
 	}
 }

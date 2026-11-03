@@ -1,6 +1,8 @@
 export function flatten(object) {
 	// specifically instance of Error, not API responses which may have other properties
-	object = object instanceof Error ? { message: object.message } : object;
+	// a thrown string (e.g. a form validation message) is shown as a message, not one entry per character
+	if (typeof object === 'string') object = { message: object };
+	else if (object instanceof Error) object = { message: object.message };
 	const entries = [];
 	for (let [k, v] of Object.entries(object)) {
 		if (typeof v === 'string') {

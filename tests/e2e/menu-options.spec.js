@@ -119,3 +119,58 @@ test('a menu question can be made optional', async ({ page, request }) => {
 		})
 		.toBe(true);
 });
+
+async function addMenuQuestion(page) {
+	await page.goto(categoryPath);
+	await page.waitForLoadState('networkidle');
+	await page.getByRole('button', { name: 'Add' }).click();
+	await page.getByText('Click to expand').nth(1).click();
+	const type = page.locator('select').filter({ has: page.locator('option[value="MENU"]') });
+	await expect(type.locator('option[value="MENU"]')).toBeEnabled();
+	await type.selectOption('MENU');
+}
+
+test('a new select menu question can be added and saved', async ({ page, request, issues }) => {
+	const before = (await (await request.get('/__requests')).json()).length;
+	await addMenuQuestion(page);
+	await page.getByRole('button', { name: 'Edit' }).click();
+	const dialog = page.getByRole('dialog');
+	await dialog.getByRole('button', { name: 'Add' }).click();
+	await dialog.locator('input[type=text]').nth(0).fill('Billing');
+	await dialog.getByRole('button', { name: 'Save' }).click();
+	await expect(dialog).toBeHidden();
+
+	await page.getByRole('button', { name: 'Save category' }).click();
+	let patch;
+	await expect
+		.poll(async () => {
+			const requests = (await (await request.get('/__requests')).json()).slice(before);
+			patch ??= requests.find(
+				(r) =>
+					r.method === 'PATCH' &&
+					r.path.endsWith(`/categories/${CATEGORY_ID}`) &&
+					JSON.parse(r.body).questions?.length === 2
+			);
+			return !!patch;
+		})
+		.toBe(true);
+	const added = JSON.parse(patch.body).questions[1];
+	expect(added).toMatchObject({ type: 'MENU', minLength: 1, maxLength: 1 });
+	expect(added.options.map((o) => o.label)).toEqual(['Billing']);
+	expect(issues.errors).toEqual([]);
+});
+
+test('a select menu question without options is not saved', async ({ page, request }) => {
+	const before = (await (await request.get('/__requests')).json()).length;
+	await addMenuQuestion(page);
+	await page.getByRole('button', { name: 'Save category' }).click();
+	await expect(page.getByText(/question needs at least one option/)).toBeVisible();
+	const requests = (await (await request.get('/__requests')).json()).slice(before);
+	// other tests run in parallel against the same mock, so only look for this question
+	const sent = requests.filter(
+		(r) =>
+			r.method === 'PATCH' &&
+			JSON.parse(r.body).questions?.some((q) => q.type === 'MENU' && !q.options?.length)
+	);
+	expect(sent).toEqual([]);
+});

@@ -107,20 +107,19 @@
 										required
 										bind:value={q.type}
 										onchange={() => {
-											if (q.type === 'TEXT') q.maxLength = 1000;
-											else if (q.type === 'MENU') q.maxLength = 1;
+											if (q.type === 'TEXT') {
+												q.maxLength = 1000;
+												q.minLength = 0;
+											} else if (q.type === 'MENU') {
+												q.maxLength = 1;
+												q.minLength = 1;
+												q.options ??= [];
+											}
 										}}
 									>
 										<option value={null} class="p-1" default disabled>Select an input type</option>
 										<option value="TEXT" class="p-1"> Text </option>
-										<option
-											value="MENU"
-											class="p-1"
-											disabled
-											title="Disabled until supported by Discord"
-										>
-											Select menu
-										</option>
+										<option value="MENU" class="p-1"> Select menu </option>
 									</select>
 								</label>
 							</div>

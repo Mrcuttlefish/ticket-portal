@@ -187,8 +187,12 @@ http
 			return json(res, 200, []);
 		}
 		if (p === `${g}/settings`) {
-			return req.method === 'GET' ? json(res, 200, f.settings()) : json(res, 200, f.settings());
+			// a PATCH answers with the saved settings, like the bot does
+			return req.method === 'GET'
+				? json(res, 200, f.settings())
+				: json(res, 200, { ...f.settings(), ...JSON.parse(body || '{}') });
 		}
+		if (p === `${g}/panels` && req.method === 'POST') return json(res, 200, {});
 		if (p === `${g}/tags`) return json(res, 200, f.tags());
 		if (p.startsWith(`${g}/tags/`)) return json(res, 200, JSON.parse(body || '{}'));
 		if (p === '/api/locales') return json(res, 200, ['en-GB', 'fr']);
