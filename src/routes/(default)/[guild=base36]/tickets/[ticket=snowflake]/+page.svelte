@@ -4,10 +4,12 @@
 	import Message from '$components/portal/Message.svelte';
 	import {
 		MAX_MESSAGE_LENGTH,
+		addAuthors,
 		closeTicket,
 		displayName,
 		eventsUrl,
 		getMessages,
+		getTicket,
 		sendMessage,
 		upsertMessage
 	} from '$lib/api/tickets';
@@ -20,7 +22,10 @@
 	let messages = $state(data.page.messages ?? []);
 	let older = $state(data.page.next ?? null);
 	const refs = {
-		users: { ...(data.ticket.users ?? {}), ...(data.page.users ?? {}) },
+		users: addAuthors(
+			{ ...(data.ticket.users ?? {}), ...(data.page.users ?? {}) },
+			data.page.messages
+		),
 		roles: data.page.roles ?? {},
 		channels: data.page.channels ?? {}
 	};
@@ -65,16 +70,24 @@
 		source.onerror = () => (live = false); // EventSource reconnects by itself
 		source.addEventListener('message', (e) => {
 			const nearEnd = list && list.scrollHeight - list.scrollTop - list.clientHeight < 120;
-			messages = upsertMessage(messages, JSON.parse(e.data));
+			const message = JSON.parse(e.data);
+			addAuthors(refs.users, [message]);
+			messages = upsertMessage(messages, message);
 			if (nearEnd) scrollToEnd();
 		});
 		source.addEventListener('message-deleted', (e) => {
 			const { id } = JSON.parse(e.data);
 			messages = messages.map((m) => (m.id === id ? { ...m, deleted: true } : m));
 		});
-		source.addEventListener('ticket-closed', (e) => {
-			const { closedAt } = JSON.parse(e.data);
-			ticket = { ...ticket, open: false, closedAt: closedAt ?? new Date().toISOString() };
+		source.addEventListener('ticket-closed', async () => {
+			source.close();
+			ticket = { ...ticket, open: false, closedAt: ticket.closedAt ?? new Date().toISOString() };
+			// pick up the close reason and who closed it
+			try {
+				ticket = await getTicket(fetch, guildId, ticket.id);
+			} catch {
+				// keep the local state
+			}
 			source.close();
 			live = false;
 		});
@@ -86,6 +99,7 @@
 		const result = await getMessages(fetch, guildId, ticket.id, older);
 		messages = [...result.messages, ...messages];
 		Object.assign(refs.users, result.users ?? {});
+		addAuthors(refs.users, result.messages);
 		older = result.next ?? null;
 		requestAnimationFrame(() => list.scrollTo({ top: list.scrollHeight - before }));
 	}
@@ -98,7 +112,7 @@
 		sendError = '';
 		try {
 			const message = await sendMessage(fetch, guildId, ticket.id, content);
-			messages = upsertMessage(messages, message);
+			if (message) messages = upsertMessage(messages, message);
 			draft = '';
 			scrollToEnd();
 		} catch (err) {
@@ -113,7 +127,12 @@
 		closing = true;
 		try {
 			await closeTicket(fetch, guildId, ticket.id, closeReason.trim());
-			ticket = { ...ticket, open: false, closedAt: new Date().toISOString() };
+			ticket = {
+				...ticket,
+				open: false,
+				closedAt: new Date().toISOString(),
+				closedReason: closeReason.trim() || null
+			};
 			showClose = false;
 		} catch (err) {
 			sendError = err.message;
@@ -242,6 +261,14 @@
 					<dt class="text-gray-500 dark:text-gray-400">Closed</dt>
 					<dd>{dateFormat.format(new Date(ticket.closedAt))}</dd>
 				{/if}
+				{#if ticket.closedById}
+					<dt class="text-gray-500 dark:text-gray-400">Closed by</dt>
+					<dd>{displayName(refs.users[ticket.closedById])}</dd>
+				{/if}
+				{#if ticket.closedReason}
+					<dt class="text-gray-500 dark:text-gray-400">Reason</dt>
+					<dd class="whitespace-pre-wrap break-words">{ticket.closedReason}</dd>
+				{/if}
 			</dl>
 		</div>
 		{#if ticket.questionAnswers?.length}
@@ -250,7 +277,9 @@
 				<dl class="flex flex-col gap-2">
 					{#each ticket.questionAnswers as answer}
 						<div>
-							<dt class="text-gray-500 dark:text-gray-400">{answer.question?.label}</dt>
+							<dt class="text-gray-500 dark:text-gray-400">
+								{answer.label ?? answer.question?.label}
+							</dt>
 							<dd class="whitespace-pre-wrap break-words">{answer.value || '—'}</dd>
 						</div>
 					{/each}

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
 	ApiError,
+	addAuthors,
 	formatBytes,
 	fromSlug,
 	listTickets,
@@ -44,9 +45,10 @@ test('listTickets only sends set filters', async () => {
 	assert.equal(fetch.calls[1].url, '/api/guilds/1/tickets');
 });
 
-test('sendMessage posts JSON with credentials', async () => {
-	const fetch = fakeFetch(201, { id: '1' });
-	await sendMessage(fetch, '1', '2', 'hello');
+test('sendMessage posts JSON with credentials and returns the message', async () => {
+	const fetch = fakeFetch(201, { message: { id: '9', content: 'hello' } });
+	const message = await sendMessage(fetch, '1', '2', 'hello');
+	assert.deepEqual(message, { id: '9', content: 'hello' });
 	const { url, options } = fetch.calls[0];
 	assert.equal(url, '/api/guilds/1/tickets/2/messages');
 	assert.equal(options.method, 'POST');
@@ -58,13 +60,13 @@ test('sendMessage posts JSON with credentials', async () => {
 test('API errors carry the status and message', async () => {
 	await assert.rejects(
 		sendMessage(
-			fakeFetch(409, { error: 'Conflict', message: 'This ticket is closed' }),
+			fakeFetch(403, { error: 'Forbidden', message: 'This ticket is closed.' }),
 			'1',
 			'2',
 			'x'
 		),
 		(err) =>
-			err instanceof ApiError && err.status === 409 && err.message === 'This ticket is closed'
+			err instanceof ApiError && err.status === 403 && err.message === 'This ticket is closed.'
 	);
 });
 
@@ -107,4 +109,15 @@ test('upsertMessage dedupes and keeps order', () => {
 	list = upsertMessage(list, { ...b, deleted: true });
 	assert.equal(list.length, 2);
 	assert.equal(list[1].deleted, true);
+});
+
+test('addAuthors names people from messages and knows the anonymous Staff user', () => {
+	const users = addAuthors({ 1: { displayName: 'Known' } }, [
+		{ author: { id: '1', displayName: 'Other' } },
+		{ author: { id: '2', displayName: 'Helper', username: 'helper' } },
+		{ author: null }
+	]);
+	assert.equal(users['1'].displayName, 'Known');
+	assert.equal(users['2'].displayName, 'Helper');
+	assert.equal(users['0'].displayName, 'Staff');
 });

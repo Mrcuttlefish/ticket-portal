@@ -167,6 +167,9 @@ export const portalTickets = () => [
 		claimedById: null,
 		createdAt: '2026-10-01T10:00:00.000Z',
 		closedAt: '2026-10-02T10:00:00.000Z',
+		// an anonymous category: members see staff as user "0"
+		closedById: '0',
+		closedReason: 'Refund issued',
 		messageCount: 2
 	},
 	{
@@ -251,6 +254,24 @@ export const portalMessages = () => ({
 			embeds: [],
 			attachments: [],
 			createdAt: '2026-10-01T10:01:00.000Z',
+			editedAt: null,
+			deleted: false,
+			viaWeb: false
+		},
+		{
+			id: '400000000000000011',
+			author: {
+				id: '0',
+				username: 'staff',
+				displayName: 'Staff',
+				avatar: null,
+				bot: false,
+				roleColour: null
+			},
+			content: 'Done, refund issued.',
+			embeds: [],
+			attachments: [],
+			createdAt: '2026-10-02T09:00:00.000Z',
 			editedAt: null,
 			deleted: false,
 			viaWeb: false

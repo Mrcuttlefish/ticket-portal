@@ -44,12 +44,15 @@ export function getMessages(fetch, guildId, ticketId, cursor) {
 	return request(fetch, `${base(guildId)}/${ticketId}/messages${qs}`);
 }
 
-export const sendMessage = (fetch, guildId, ticketId, content) =>
-	request(fetch, `${base(guildId)}/${ticketId}/messages`, {
+/** Returns the sent message (the API answers `201 { message }`). */
+export async function sendMessage(fetch, guildId, ticketId, content) {
+	const body = await request(fetch, `${base(guildId)}/${ticketId}/messages`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ content })
 	});
+	return body?.message ?? null;
+}
 
 export const closeTicket = (fetch, guildId, ticketId, reason) =>
 	request(fetch, `${base(guildId)}/${ticketId}/close`, {
@@ -117,6 +120,24 @@ export function upsertMessage(list, message) {
 	const next = [...list, message];
 	next.sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
 	return next;
+}
+
+/** In anonymous categories the API shows staff to members as this user. */
+export const STAFF_USER_ID = '0';
+
+/**
+ * Collect a `users` map from message authors, so the ticket details can name people
+ * (the ticket endpoints don't return a users map of their own).
+ * @param {Record<string, any>} users
+ * @param {any[]} messages
+ */
+export function addAuthors(users, messages) {
+	for (const m of messages ?? []) {
+		const a = m?.author;
+		if (a?.id && !users[a.id]) users[a.id] = a;
+	}
+	if (!users[STAFF_USER_ID]) users[STAFF_USER_ID] = { username: 'staff', displayName: 'Staff' };
+	return users;
 }
 
 /** Name to show for a user record or message author. */

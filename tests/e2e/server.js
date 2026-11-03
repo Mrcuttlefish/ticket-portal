@@ -64,9 +64,12 @@ http
 			if (!sub && req.method === 'GET') {
 				return json(res, 200, {
 					...ticket,
-					questionAnswers: [{ question: { label: 'Email' }, value: 'me@example.com' }],
+					// same shape as the bot's GET /tickets/:ticket (no users map)
+					questionAnswers: [
+						{ label: 'Email', questionId: 'q1', type: 'TEXT', value: 'me@example.com' }
+					],
+					closedReason: ticket.closedReason ?? null,
 					feedback: null,
-					users: f.portalUsers,
 					permissions: { isStaff: false, canReply: ticket.open, canClose: ticket.open }
 				});
 			}
@@ -78,7 +81,7 @@ http
 					return json(res, 415, { error: 'JSON only' });
 				const { content } = JSON.parse(body);
 				if (!ticket.open)
-					return json(res, 409, { error: 'Conflict', message: 'This ticket is closed' });
+					return json(res, 403, { error: 'Forbidden', message: 'This ticket is closed.' });
 				if (!content || content.length > 2000)
 					return json(res, 400, {
 						error: 'Bad Request',
@@ -104,17 +107,14 @@ http
 				};
 				messages[id].push(message);
 				emit(id, 'message', message);
-				return json(res, 201, message);
+				return json(res, 201, { message });
 			}
 			if (sub === '/close' && req.method === 'POST') {
 				ticket.open = false;
 				ticket.closedAt = new Date().toISOString();
-				emit(id, 'ticket-closed', {
-					id,
-					closedAt: ticket.closedAt,
-					reason: JSON.parse(body || '{}').reason ?? null
-				});
-				return json(res, 200, { ok: true });
+				ticket.closedReason = JSON.parse(body || '{}').reason ?? null;
+				emit(id, 'ticket-closed', { id });
+				return json(res, 200, { closed: true });
 			}
 			if (sub === '/events') {
 				res.writeHead(200, {
@@ -122,7 +122,7 @@ http
 					'cache-control': 'no-cache',
 					connection: 'keep-alive'
 				});
-				res.write(': connected\n\n');
+				res.write(`event: ready\ndata: ${JSON.stringify({ ticketId: id })}\n\n`);
 				if (!streams.has(id)) streams.set(id, new Set());
 				streams.get(id).add(res);
 				req.on('close', () => streams.get(id).delete(res));

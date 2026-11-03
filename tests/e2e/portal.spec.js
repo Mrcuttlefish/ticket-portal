@@ -87,6 +87,19 @@ test.describe('transcript', () => {
 		await expect(page.getByText('This is the archived transcript.')).toBeVisible();
 	});
 
+	test('anonymous staff and the close reason are shown', async ({ page }) => {
+		await page.goto(`${ticketsPath}/${CLOSED_TICKET}`);
+		const log = page.getByRole('log', { name: 'Messages' });
+		await expect(log).toContainText('Done, refund issued.');
+		await expect(log).toContainText('Staff');
+		const aside = page.locator('aside');
+		await expect(aside).toContainText('Closed by');
+		await expect(aside).toContainText('Staff');
+		await expect(aside).toContainText('Refund issued');
+		// the creator is named from their messages (the ticket endpoint has no users map)
+		await expect(aside).toContainText('Admin');
+	});
+
 	test('unknown tickets 404', async ({ page }) => {
 		const response = await page.goto(`${ticketsPath}/399999999999999999`);
 		expect(response.status()).toBe(404);
@@ -162,4 +175,5 @@ test('closing a ticket', async ({ page }) => {
 	await page.getByRole('button', { name: 'Close ticket', exact: true }).click();
 	await expect(page.getByTestId('ticket-status')).toHaveText('Closed');
 	await expect(page.getByLabel('Reply')).toHaveCount(0);
+	await expect(page.locator('aside')).toContainText('Solved');
 });
