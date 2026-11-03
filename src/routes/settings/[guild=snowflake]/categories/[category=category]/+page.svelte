@@ -574,6 +574,22 @@
 				</Section>
 				<Section id="features" title="Features" icon="fa-solid fa-toggle-on">
 					<div>
+						<label for="anonymous" class="font-medium">
+							Anonymous staff
+							<input
+								type="checkbox"
+								id="anonymous"
+								name="anonymous"
+								class="form-checkbox"
+								bind:checked={category.anonymous}
+							/>
+							<Hint
+								>Staff replies are posted by the bot as "Staff", so members can't see which staff
+								member answered.</Hint
+							>
+						</label>
+					</div>
+					<div>
 						<label for="claiming" class="font-medium">
 							Claiming
 							<input
