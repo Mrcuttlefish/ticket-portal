@@ -67,6 +67,34 @@ test.describe('general settings', () => {
 		expect(body.holidays).toEqual(['2027-01-01']);
 	});
 
+	test('transcript channel, transcript DMs and logged events are saved', async ({
+		page,
+		request
+	}) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByText('Logged events')).toHaveCount(0);
+		await page.getByLabel('Log channel').selectOption('3');
+		await page.getByRole('checkbox', { name: 'Tickets claimed', exact: true }).uncheck();
+		await page.getByRole('checkbox', { name: 'Settings changes', exact: true }).uncheck();
+		await page.getByLabel('Transcript channel').selectOption('3');
+		await page.getByRole('checkbox', { name: /Send the transcript to the member/ }).check();
+		const body = await submitAndCapture(page, request, '/settings', 'Save changes');
+		expect(body.logChannel).toBe('3');
+		expect(body.logExclude).toEqual(['ticket.claim', 'admin']);
+		expect(body.transcriptChannel).toBe('3');
+		expect(body.transcriptDm).toBe(true);
+	});
+
+	test('no transcript channel is sent as null', async ({ page, request }) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		const body = await submitAndCapture(page, request, '/settings', 'Save changes');
+		expect(body.transcriptChannel).toBeNull();
+		expect(body.transcriptDm).toBe(false);
+		expect(body.logExclude).toEqual([]);
+	});
+
 	test('saving stays on the page and confirms', async ({ page }) => {
 		await page.goto(path);
 		await page.waitForLoadState('networkidle');
@@ -169,6 +197,75 @@ test.describe('category options', () => {
 		await page.getByLabel('Suggest tags').check();
 		const body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
 		expect(body.suggestTags).toBe(true);
+	});
+
+	test('closed channels, opening style and claiming options default to the old behaviour', async ({
+		page,
+		request
+	}) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		const body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
+		expect(body).toMatchObject({
+			keepClosedFor: null,
+			openingStyle: 'EMBED',
+			claimHide: true,
+			claimTakeover: false,
+			claimReleaseLocked: false,
+			claimedChannelName: null,
+			claimedCategory: null
+		});
+	});
+
+	test('closed channels can be kept, for a while or until deleted', async ({ page, request }) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await page.getByLabel('When a ticket closes').selectOption('timed');
+		await page.getByRole('textbox', { name: /^Delete closed channels after/ }).fill('2d');
+		let body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
+		expect(body.keepClosedFor).toBe(2 * 86_400_000);
+
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await page.getByLabel('When a ticket closes').selectOption('keep');
+		body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
+		expect(body.keepClosedFor).toBe(0);
+	});
+
+	test('the opening message can be plain text or off', async ({ page, request }) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('combobox', { name: /^Style/ }).selectOption('OFF');
+		await expect(page.getByRole('textbox', { name: /^Opening message/ })).toBeDisabled();
+		let body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
+		expect(body.openingStyle).toBe('OFF');
+
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('combobox', { name: /^Style/ }).selectOption('TEXT');
+		body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
+		expect(body.openingStyle).toBe('TEXT');
+	});
+
+	test('claiming options are shown when claiming is on, and saved', async ({ page, request }) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByLabel('Staff can take over claimed tickets')).toHaveCount(0);
+		await page.getByRole('checkbox', { name: /^Claiming/ }).check();
+		await page.getByLabel('Hide claimed tickets from other staff').uncheck();
+		await page.getByLabel('Staff can take over claimed tickets').check();
+		await page.getByLabel('Only the claimer can release').check();
+		await page.getByRole('textbox', { name: /^Channel name while claimed/ }).fill('claimed-{num}');
+		await page.getByLabel('Move claimed tickets to').selectOption('2');
+		const body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
+		expect(body).toMatchObject({
+			claiming: true,
+			claimHide: false,
+			claimTakeover: true,
+			claimReleaseLocked: true,
+			claimedChannelName: 'claimed-{num}',
+			claimedCategory: '2'
+		});
 	});
 
 	test('the main Discord category is not offered as a fallback', async ({ page }) => {

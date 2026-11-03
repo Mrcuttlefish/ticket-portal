@@ -4,6 +4,8 @@ import {
 	WEBHOOK_SECRET_MASK,
 	cleanPingRoleRules,
 	cleanRoleLimits,
+	closedChannelFromForm,
+	closedChannelToForm,
 	durationToInput,
 	inputToDuration,
 	normaliseHolidays,
@@ -125,5 +127,20 @@ test('ping rules need creator roles', () => {
 			{ roles: ['1'], ping: ['2'] },
 			{ roles: ['4'], ping: [] }
 		]
+	);
+});
+
+test('closed channel settings round-trip', () => {
+	assert.deepEqual(closedChannelToForm(null), { mode: 'delete', after: '' });
+	assert.deepEqual(closedChannelToForm(undefined), { mode: 'delete', after: '' });
+	assert.deepEqual(closedChannelToForm(0), { mode: 'keep', after: '' });
+	assert.deepEqual(closedChannelToForm(86_400_000), { mode: 'timed', after: '1d' });
+	assert.equal(closedChannelFromForm({ mode: 'delete', after: '1d' }), null);
+	assert.equal(closedChannelFromForm({ mode: 'keep', after: '' }), 0);
+	assert.equal(closedChannelFromForm({ mode: 'timed', after: '1d' }), 86_400_000);
+	assert.throws(() => closedChannelFromForm({ mode: 'timed', after: '' }), /enter a duration/);
+	assert.throws(
+		() => closedChannelFromForm({ mode: 'timed', after: 'soon' }),
+		/not a valid duration/
 	);
 });

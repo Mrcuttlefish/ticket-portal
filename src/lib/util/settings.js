@@ -144,3 +144,42 @@ export function cleanPingRoleRules(rows) {
 		.filter((row) => Array.isArray(row?.roles) && row.roles.length > 0)
 		.map((row) => ({ roles: [...new Set(row.roles)], ping: [...new Set(row.ping ?? [])] }));
 }
+
+/**
+ * What happens to a ticket's channel when it closes (the category's `keepClosedFor`) → form state.
+ * null: the channel is deleted; 0: it's kept until staff delete it; otherwise it's kept for that long.
+ * @param {number | null | undefined} keepClosedFor milliseconds
+ * @returns {{ mode: 'delete' | 'keep' | 'timed', after: string }}
+ */
+export function closedChannelToForm(keepClosedFor) {
+	if (keepClosedFor === null || keepClosedFor === undefined) return { mode: 'delete', after: '' };
+	if (keepClosedFor === 0) return { mode: 'keep', after: '' };
+	return { mode: 'timed', after: ms(keepClosedFor) };
+}
+
+/**
+ * Form state → `keepClosedFor`.
+ * @param {{ mode: string, after?: string }} form
+ * @returns {number | null}
+ */
+export function closedChannelFromForm({ mode, after }) {
+	if (mode === 'keep') return 0;
+	if (mode !== 'timed') return null;
+	const value = inputToDuration(after, { field: 'Delete closed channels after' });
+	if (value === null) throw new Error('Delete closed channels after: enter a duration (e.g. 1d).');
+	return value;
+}
+
+/** Events that can be left out of the log channel (the bot's `logExclude`) */
+export const LOG_EVENTS = [
+	['ticket.create', 'Tickets created'],
+	['ticket.close', 'Tickets closed'],
+	['ticket.reopen', 'Tickets reopened'],
+	['ticket.delete', 'Closed ticket channels deleted'],
+	['ticket.claim', 'Tickets claimed'],
+	['ticket.unclaim', 'Tickets released'],
+	['ticket.update', 'Tickets changed (topic, members, priority…)'],
+	['message.update', 'Messages edited'],
+	['message.delete', 'Messages deleted'],
+	['admin', 'Settings changes']
+];
