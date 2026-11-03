@@ -14,13 +14,15 @@
 		"preview": "vite preview",
 		"lint": "prettier --check --plugin-search-dir=. . && eslint .",
 		"format": "prettier --write --plugin-search-dir=. .",
-		"test": "node --test tests/*.test.js"
+		"test": "node --test tests/unit/*.test.js",
+		"test:e2e": "playwright test"
 	},
 	"devDependencies": {
 		"@eartharoid/i18n": "2.0.0-alpha.1",
 		"@eartharoid/vite-plugin-i18n": "1.0.0-alpha.1",
 		"@eslint/js": "^9.39.5",
 		"@fortawesome/fontawesome-free": "^6.7.2",
+		"@playwright/test": "1.63.0",
 		"@skyra/discord-components-core": "^3.6.1",
 		"@sveltejs/adapter-node": "^5.5.7",
 		"@sveltejs/kit": "^2.70.3",

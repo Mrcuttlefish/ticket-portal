@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { match as snowflake } from '../src/params/snowflake.js';
-import { match as category } from '../src/params/category.js';
-import { match as base36 } from '../src/params/base36.js';
+import { match as snowflake } from '../../src/params/snowflake.js';
+import { match as category } from '../../src/params/category.js';
+import { match as base36 } from '../../src/params/base36.js';
 
 test('snowflake matcher', () => {
 	assert.ok(snowflake('451745464480432129'));

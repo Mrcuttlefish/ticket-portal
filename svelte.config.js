@@ -14,9 +14,9 @@ const config = {
 			directives: {
 				'default-src': ['self'],
 				'script-src': ['self'],
-				'style-src': ['self', 'unsafe-inline'],
+				'style-src': ['self', 'unsafe-inline', 'https://fonts.bunny.net'],
 				'img-src': ['self', 'data:', 'blob:', 'https:'],
-				'font-src': ['self', 'data:', 'https://cdn.skyra.pw'],
+				'font-src': ['self', 'data:', 'https://cdn.skyra.pw', 'https://fonts.bunny.net'],
 				'connect-src': ['self'],
 				'object-src': ['none'],
 				'base-uri': ['self'],

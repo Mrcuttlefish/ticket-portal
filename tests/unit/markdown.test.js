@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { escapeHTML, renderMarkdown, safeHref } from '../src/lib/util/markdown.js';
+import { escapeHTML, renderMarkdown, safeHref } from '../../src/lib/util/markdown.js';
 
 test('escapeHTML escapes all HTML special characters', () => {
 	assert.equal(
