@@ -77,7 +77,7 @@
 </div>
 <div>
 	<div class="font-medium">
-		Options ({question.options.length}/25)
+		Options ({question.options?.length ?? 0}/25)
 		<Required />
 		<i
 			class="fa-solid fa-circle-question cursor-help text-gray-500 dark:text-slate-400"
@@ -94,7 +94,7 @@
 	</div>
 	<div>
 		<ul class="list-inside list-disc">
-			{#each question.options as option}
+			{#each question.options ?? [] as option}
 				<li>{option.label}</li>
 			{/each}
 		</ul>
@@ -111,7 +111,7 @@
 			<input
 				type="text"
 				class="input form-input text-sm"
-				maxlength="150"
+				maxlength="100"
 				bind:value={question.placeholder}
 			/>
 		</label>

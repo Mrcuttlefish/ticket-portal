@@ -139,6 +139,9 @@
 				throw new Error(`The description is too long (${json.description.length}>100).`);
 
 			json.questions = qS.questions.map((q) => {
+				if (!q.type) throw `Choose a type for the "${q.label}" question.`;
+				if (q.type === 'MENU' && !(q.options?.length > 0))
+					throw `The "${q.label}" question needs at least one option. Use Edit next to Options to add some.`;
 				if (q.type === 'TEXT') {
 					if (q.value.length > 0 && q.value.length < q.minLength)
 						throw `The value of the "${q.label}" question is shorter than the minimum length.`;
