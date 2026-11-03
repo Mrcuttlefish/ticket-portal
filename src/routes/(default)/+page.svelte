@@ -22,13 +22,13 @@
 		<div class="flex flex-col flex-wrap items-stretch justify-center gap-4 sm:flex-row sm:gap-8">
 			{#each guilds as guild}
 				{@const slug = BigInt(guild.id).toString(36)}
-				<a href={`/${slug}`}>
+				<a href={`/${slug}/tickets`}>
 					<div
 						class="h-full w-full rounded-lg border-2 border-dgrey-400 bg-dgrey-300 p-4 shadow-black transition-all duration-300 hover:scale-105 hover:shadow-2xl dark:border-dgrey-700 dark:bg-dgrey-900 sm:w-48"
 					>
 						<div class="flex flex-row items-center gap-4 sm:flex-col">
 							<img
-								src={guild.logo}
+								src={guild.logo || '/favicon.png'}
 								alt=""
 								class="h-12 w-12 rounded-full sm:mx-auto sm:h-24 sm:w-24"
 							/>
