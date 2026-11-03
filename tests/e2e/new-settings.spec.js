@@ -2,7 +2,7 @@ import { test, expect } from './helpers.js';
 import { GUILD_ID, CATEGORY_ID } from './fixtures.js';
 
 /** Submit the page's form and return the parsed body of the PATCH it sends. */
-async function submitAndCapture(page, request, pathSuffix, button = 'Submit') {
+async function submitAndCapture(page, request, pathSuffix, button = 'Save category') {
 	const before = (await (await request.get('/__requests')).json()).length;
 	await page.getByRole('button', { name: button }).click();
 	let patch;

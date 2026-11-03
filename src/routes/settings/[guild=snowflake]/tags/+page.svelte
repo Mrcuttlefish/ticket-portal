@@ -151,16 +151,18 @@
 	};
 </script>
 
-<div class="mb-8 text-center text-orange-600 dark:text-orange-400">
-	<p>
-		<i class="fa-solid fa-triangle-exclamation"></i>
-		<a href="https://discordtickets.app/configuration/tags" class="font-semibold hover:underline"
-			>Read the documentation</a
+<div class="mx-auto mb-6 max-w-5xl px-4">
+	<h1 class="text-3xl font-bold">Tags</h1>
+	<p class="text-gray-500 dark:text-slate-400">
+		Saved responses staff can send with <span class="font-mono">/tag</span>.
+		<a
+			href="https://discordtickets.app/configuration/tags"
+			target="_blank"
+			rel="noopener noreferrer"
+			class="text-blurple hover:underline">Documentation</a
 		>
-		to avoid problems.
 	</p>
 </div>
-<h1 class="m-4 text-center text-4xl font-bold">Tags</h1>
 {#if error}
 	<ErrorBox {error} />
 {/if}
