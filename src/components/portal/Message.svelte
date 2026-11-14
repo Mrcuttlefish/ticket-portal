@@ -15,7 +15,9 @@
 			: 'https://cdn.discordapp.com/embed/avatars/0.png'
 	);
 	const html = $derived(
-		renderMarkdown(resolveMentions(message.content, refs).replace(/\n/g, '  \n'))
+		renderMarkdown(resolveMentions(message.content, refs).replace(/\n/g, '  \n'), [], {
+			images: false
+		})
 	);
 	const isImage = (a) => /^image\//.test(a.contentType ?? '') && !a.expired && safeHref(a.url);
 </script>
@@ -91,14 +93,16 @@
 				{#if embed.description}
 					<div class="prose prose-sm dark:prose-invert">
 						<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
-						{@html renderMarkdown(resolveMentions(embed.description, refs))}
+						{@html renderMarkdown(resolveMentions(embed.description, refs), [], {
+							images: false
+						})}
 					</div>
 				{/if}
 				{#each embed.fields ?? [] as field}
 					<p class="mt-2 text-sm font-semibold">{field.name}</p>
 					<div class="prose prose-sm dark:prose-invert">
 						<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by renderMarkdown -->
-						{@html renderMarkdown(resolveMentions(field.value, refs))}
+						{@html renderMarkdown(resolveMentions(field.value, refs), [], { images: false })}
 					</div>
 				{/each}
 			</div>

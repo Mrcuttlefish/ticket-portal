@@ -53,6 +53,19 @@ renderer.image = (href, title, text) => {
 	return `<img src="${escapeHTML(safe)}" alt="${escapeHTML(text ?? '')}"${titleAttr} />`;
 };
 
+// Ticket messages are written by anyone who can open a ticket. Discord doesn't turn `![](url)` into an image, and
+// loading one would let a ticket's creator see the IP address and viewing times of the staff reading the
+// transcript, so transcripts show such images as links instead.
+const transcriptRenderer = new marked.Renderer();
+transcriptRenderer.html = renderer.html;
+transcriptRenderer.link = renderer.link;
+transcriptRenderer.image = (href, title, text) => {
+	const safe = safeHref(href);
+	const label = escapeHTML(text || href || '');
+	if (!safe) return label;
+	return `<a href="${escapeHTML(safe)}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`;
+};
+
 /**
  * Render user-supplied markdown to HTML that is safe to pass to `{@html}`.
  * Raw HTML is escaped and only http(s)/mailto links and images are kept.
@@ -62,11 +75,12 @@ renderer.image = (href, title, text) => {
  * `[pattern, value, { html: true }]` where `value` is already-trusted HTML.
  * @param {string} source
  * @param {Array<[RegExp, unknown, { html?: boolean }?]>} [replacements]
+ * @param {{ images?: boolean }} [options] `images: false` shows markdown images as links (for ticket messages)
  * @returns {string}
  */
-export function renderMarkdown(source, replacements = []) {
+export function renderMarkdown(source, replacements = [], { images = true } = {}) {
 	let html = marked.parse(String(source ?? ''), {
-		renderer,
+		renderer: images ? renderer : transcriptRenderer,
 		headerIds: false,
 		mangle: false
 	});
