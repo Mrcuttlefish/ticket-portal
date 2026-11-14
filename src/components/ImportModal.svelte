@@ -36,7 +36,16 @@
 	$effect(async () => {
 		if (file) {
 			loading = true;
-			let zip = await Zip.loadAsync(file);
+			let zip;
+			try {
+				zip = await Zip.loadAsync(file);
+			} catch {
+				// not a zip file: show the "doesn't appear to be a valid export" warning
+				iconUrl = undefined;
+				comment = false;
+				loading = false;
+				return;
+			}
 			let iconFile = zip.file('icon.png');
 			if (iconFile) {
 				iconUrl = `data:image/png;base64, ${await iconFile.async('base64')}`;

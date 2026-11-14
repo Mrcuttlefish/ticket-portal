@@ -1,4 +1,5 @@
 import { test, expect } from './helpers.js';
+import JSZip from 'jszip';
 import { GUILD_ID, user } from './fixtures.js';
 
 const path = `/settings/${GUILD_ID}`;
@@ -49,4 +50,32 @@ test('a refused export shows the reason instead of an error page', async ({ page
 	await dialog.getByRole('button', { name: /Export \(backup\)/ }).click();
 	await expect(dialog.getByRole('alert')).toHaveText("Only the server's owner can do this.");
 	await expect(page).toHaveURL(new RegExp(`${path}$`));
+});
+
+test('an export zip is read in the browser before importing', async ({ page, request, issues }) => {
+	await setOwner(request, user.id);
+	const zip = new JSZip();
+	zip.file('guild.json', '{}');
+	zip.comment = JSON.stringify({
+		exportedAt: '2026-11-14T12:00:00.000Z',
+		exportedFromClientId: 'x',
+		originalGuildId: GUILD_ID,
+		version: '5.0.2'
+	});
+	const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+	const dialog = await openData(page);
+	await dialog.getByRole('button', { name: /Import \(restore\)/ }).click();
+	const input = page.locator('input#zip');
+	await input.setInputFiles({ name: 'export.zip', mimeType: 'application/zip', buffer });
+	await expect(page.getByText('Version 5.0.2')).toBeVisible();
+	await expect(page.getByText("doesn't appear to be a valid export")).toHaveCount(0);
+
+	await input.setInputFiles({
+		name: 'bad.zip',
+		mimeType: 'application/zip',
+		buffer: Buffer.from('nope')
+	});
+	await expect(page.getByText("doesn't appear to be a valid export")).toBeVisible();
+	expect(issues.errors).toEqual([]);
+	expect(issues.csp).toEqual([]);
 });
