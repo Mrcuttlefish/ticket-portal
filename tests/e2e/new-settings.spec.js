@@ -43,6 +43,10 @@ test.describe('general settings', () => {
 		expect(body.componentsV2).toBe(false);
 		expect(body.ticketNumberOffset).toBe(0);
 		expect(body.autoClose).toBeNull();
+		expect(body.buttons).toEqual({});
+		expect(body.moveRelease).toBe(false);
+		expect(body.moveResend).toBe(false);
+		expect(body.userLimit).toBe(0);
 		expect(issues.errors).toEqual([]);
 	});
 
@@ -65,6 +69,29 @@ test.describe('general settings', () => {
 		expect(body.ticketNumberOffset).toBe(1000);
 		expect(body.webhookSecret).toBe('s3cret');
 		expect(body.holidays).toEqual(['2027-01-01']);
+	});
+
+	test('button customisation, /move options and the server ticket limit are saved', async ({
+		page,
+		request
+	}) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await page.getByLabel('Close button label').fill('Done');
+		await page.getByLabel('Close button colour').selectOption('SUCCESS');
+		await page.getByLabel('Claim button emoji').fill('🙋');
+		await page.getByRole('checkbox', { name: 'Release the claim' }).check();
+		await page.getByRole('checkbox', { name: /opening message again/ }).check();
+		await page.getByRole('spinbutton', { name: /^Open tickets per member/ }).fill('3');
+
+		const body = await submitAndCapture(page, request, '/settings', 'Save changes');
+		expect(body.buttons).toEqual({
+			claim: { emoji: '🙋' },
+			close: { label: 'Done', style: 'SUCCESS' }
+		});
+		expect(body.moveRelease).toBe(true);
+		expect(body.moveResend).toBe(true);
+		expect(body.userLimit).toBe(3);
 	});
 
 	test('transcript channel, transcript DMs and logged events are saved', async ({
@@ -143,8 +170,58 @@ test.describe('category options', () => {
 			fallbackCategories: [],
 			pingRoleRules: [],
 			roleLimits: [],
-			staleAfter: null
+			staleAfter: null,
+			buttonLabel: null,
+			buttonStyle: null,
+			closedChannelName: null,
+			closedLimit: 0,
+			closedMessage: null,
+			creatorRoles: {},
+			openDm: null,
+			outOfHours: 'WARN',
+			reopenedMessage: null,
+			staffThread: false,
+			workingHours: null
 		});
+		expect(issues.errors).toEqual([]);
+	});
+
+	test('Ticket Tool parity (P2) options are saved', async ({ page, request, issues }) => {
+		await page.goto(path);
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('textbox', { name: 'Panel button label' }).fill('Get help');
+		await page.getByLabel('Panel button colour').selectOption('SUCCESS');
+		await page.getByLabel('When a ticket closes').selectOption('keep');
+		await page.getByRole('textbox', { name: 'Channel name when closed' }).fill('closed-{num}');
+		await page.getByRole('spinbutton', { name: /^Kept closed tickets per member/ }).fill('2');
+		await page.getByRole('textbox', { name: 'Closed message' }).fill('Thanks {username}');
+		await page.getByRole('textbox', { name: 'Reopened message' }).fill('Welcome back');
+		await page.getByRole('textbox', { name: 'DM when a ticket opens' }).fill('Got it');
+		await page.getByRole('checkbox', { name: /^Private staff thread/ }).check();
+		await page.getByLabel('Outside working hours').selectOption('BLOCK');
+		await page.getByRole('checkbox', { name: /^Different working hours/ }).check();
+		await page.getByLabel('Monday start').fill('10:00');
+		await page.getByLabel('Monday end').fill('18:00');
+		await page.getByText('More options').click();
+		await page.getByLabel('Ticket opened: give').selectOption(['11']);
+		await page.getByLabel('Ticket closed: take away').selectOption(['11']);
+
+		const body = await submitAndCapture(page, request, `/categories/${CATEGORY_ID}`);
+		expect(body).toMatchObject({
+			buttonLabel: 'Get help',
+			buttonStyle: 'SUCCESS',
+			closedChannelName: 'closed-{num}',
+			closedLimit: 2,
+			closedMessage: 'Thanks {username}',
+			creatorRoles: { close: { add: [], remove: ['11'] }, open: { add: ['11'], remove: [] } },
+			openDm: 'Got it',
+			outOfHours: 'BLOCK',
+			reopenedMessage: 'Welcome back',
+			staffThread: true
+		});
+		expect(body.workingHours[0]).toBe('Europe/London');
+		expect(body.workingHours[2]).toEqual(['10:00', '18:00']);
+		expect(body.workingHours[1]).toEqual(['00:00', '00:00']);
 		expect(issues.errors).toEqual([]);
 	});
 

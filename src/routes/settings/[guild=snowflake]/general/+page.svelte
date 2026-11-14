@@ -1,6 +1,7 @@
 <script>
 	import { page } from '$app/stores';
-	import zones from '$lib/timezones.json';
+	import WorkingHours from '$components/settings/WorkingHours.svelte';
+	import ButtonCustomiser from '$components/settings/ButtonCustomiser.svelte';
 	import HolidayPicker from '$components/settings/HolidayPicker.svelte';
 	import Section from '$components/settings/Section.svelte';
 	import Hint from '$components/settings/Hint.svelte';
@@ -8,6 +9,8 @@
 	import {
 		LOG_EVENTS,
 		WEBHOOK_SECRET_MASK,
+		buttonsFromForm,
+		buttonsToForm,
 		durationToInput,
 		inputToDuration,
 		normaliseHolidays,
@@ -16,7 +19,6 @@
 		workingHoursFromForm,
 		workingHoursToForm
 	} from '$lib/util/settings';
-	import Required from '$components/Required.svelte';
 	import { onMount } from 'svelte';
 	import { beforeNavigate } from '$app/navigation';
 	import ErrorBox from '$components/ErrorBox.svelte';
@@ -47,8 +49,6 @@
 
 	let { settings, channels, locales, roles } = $state(data);
 
-	const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
 	channels = channels.filter((c) => c.type === 0); // text
 	roles = roles.filter((r) => r.name !== '@everyone').sort((a, b) => b.rawPosition - a.rawPosition);
 	roles.forEach((r) => {
@@ -67,6 +67,11 @@
 	settings.ghostPing ??= false;
 	settings.ticketNumberOffset ??= 0;
 	settings.webhookUrl ??= '';
+	// Ticket Tool parity, P2 (bot PR #31)
+	settings.buttons = buttonsToForm(settings.buttons);
+	settings.moveRelease ??= false;
+	settings.moveResend ??= false;
+	settings.userLimit ??= 0;
 
 	// the bot never sends the secret back, only a mask when one is set
 	let hadWebhookSecret = $state(settings.webhookSecret === WEBHOOK_SECRET_MASK);
@@ -102,6 +107,8 @@
 			if (settings.logChannel === '') json.logChannel = null;
 			if (settings.transcriptChannel === '') json.transcriptChannel = null;
 			json.workingHours = workingHoursFromForm(settings.workingHours);
+			json.buttons = buttonsFromForm(settings.buttons);
+			json.userLimit = Math.max(0, Math.min(100, Number(settings.userLimit) || 0));
 
 			const response = await fetch(`/api/admin/guilds/${$page.params.guild}/settings`, {
 				method: 'PATCH',
@@ -239,6 +246,41 @@
 				</select>
 				<Hint>Members with these roles can't open tickets. Hold Ctrl or ⌘ to select several.</Hint>
 			</label>
+			<label class="font-medium">
+				Open tickets per member
+				<input
+					type="number"
+					min="0"
+					max="100"
+					step="1"
+					class="input form-input"
+					bind:value={settings.userLimit}
+				/>
+				<Hint
+					>Across all categories. 0 means no server-wide limit (category limits still apply).</Hint
+				>
+			</label>
+			<div class="flex flex-col gap-2">
+				<p class="font-medium">When staff move a ticket with /move</p>
+				<label for="moveRelease" class="flex items-center gap-3 text-base">
+					<input
+						type="checkbox"
+						id="moveRelease"
+						class="form-checkbox"
+						bind:checked={settings.moveRelease}
+					/>
+					Release the claim
+				</label>
+				<label for="moveResend" class="flex items-center gap-3 text-base">
+					<input
+						type="checkbox"
+						id="moveResend"
+						class="form-checkbox"
+						bind:checked={settings.moveResend}
+					/>
+					Send the new category's opening message again
+				</label>
+			</div>
 		</Section>
 
 		<Section id="automation" title="Reminders and auto-close" icon="fa-solid fa-clock">
@@ -285,42 +327,7 @@
 			icon="fa-solid fa-business-time"
 			description="Shown in the opening message so members know when to expect a reply. Leave a day empty for a day off."
 		>
-			<label class="font-medium">
-				Timezone
-				<Required />
-				<input
-					type="text"
-					list="timezones"
-					class="input form-input"
-					required
-					bind:value={settings.workingHours[0]}
-				/>
-				<datalist id="timezones">
-					{#each zones as zone}
-						<option value={zone}></option>
-					{/each}
-				</datalist>
-			</label>
-			<div class="grid grid-cols-1 gap-2">
-				{#each days as day, index}
-					<div class="grid grid-cols-[6rem,1fr,auto,1fr] items-center gap-2">
-						<span class="font-medium">{day}</span>
-						<input
-							type="time"
-							aria-label="{day} start"
-							class="form-input rounded-md border-transparent bg-gray-100 text-center shadow-sm focus:border-2 focus:border-blurple focus:bg-white focus:ring-0 dark:bg-slate-800"
-							bind:value={settings.workingHours[index + 1][0]}
-						/>
-						<i class="fa-solid fa-arrow-right-long text-gray-400"></i>
-						<input
-							type="time"
-							aria-label="{day} end"
-							class="form-input rounded-md border-transparent bg-gray-100 text-center shadow-sm focus:border-2 focus:border-blurple focus:bg-white focus:ring-0 dark:bg-slate-800"
-							bind:value={settings.workingHours[index + 1][1]}
-						/>
-					</div>
-				{/each}
-			</div>
+			<WorkingHours bind:value={settings.workingHours} />
 			<div>
 				<p class="font-medium">Holidays</p>
 				<Hint
@@ -389,6 +396,19 @@
 				<input type="text" class="input form-input" maxlength="2048" bind:value={settings.footer} />
 				<Hint>Text at the bottom of the bot's embeds.</Hint>
 			</label>
+		</Section>
+
+		<Section
+			id="buttons"
+			title="Buttons"
+			icon="fa-solid fa-hand-pointer"
+			description="Change the label, emoji and colour of the bot's buttons. Leave a box empty to keep the default."
+		>
+			<ButtonCustomiser bind:value={settings.buttons} />
+			<Hint
+				>Emoji can be a unicode emoji, a name like :tickets:, or a custom emoji like
+				&lt;:name:123456789012345678&gt;.</Hint
+			>
 		</Section>
 
 		<Section id="channels" title="Channels" icon="fa-solid fa-hashtag">
