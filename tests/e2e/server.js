@@ -198,6 +198,8 @@ http
 		}
 		if (p === `${g}/panels` && req.method === 'POST') return json(res, 200, {});
 		if (p === `${g}/tags`) return json(res, 200, f.tags());
+		if (p === `${g}/statistics`) return json(res, 200, f.statistics());
+		if (p === `${g}/history`) return json(res, 200, f.history(url.searchParams));
 		if (p.startsWith(`${g}/tags/`)) return json(res, 200, JSON.parse(body || '{}'));
 		if (p === '/api/locales') return json(res, 200, ['en-GB', 'fr']);
 		// echo the path back, like a real API error might, to test that error pages escape it

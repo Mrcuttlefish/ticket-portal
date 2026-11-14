@@ -12,7 +12,9 @@
 		{ href: `${base}/categories`, label: 'Categories', icon: 'fa-solid fa-list' },
 		{ href: `${base}/panels`, label: 'Panels', icon: 'fa-solid fa-sliders' },
 		{ href: `${base}/tags`, label: 'Tags', icon: 'fa-solid fa-tags' },
-		{ href: `${base}/feedback`, label: 'Feedback', icon: 'fa-solid fa-comments' }
+		{ href: `${base}/feedback`, label: 'Feedback', icon: 'fa-solid fa-comments' },
+		{ href: `${base}/statistics`, label: 'Statistics', icon: 'fa-solid fa-chart-column' },
+		{ href: `${base}/history`, label: 'History', icon: 'fa-solid fa-clock-rotate-left' }
 	];
 	const active = (tab) =>
 		tab.exact ? $page.url.pathname === tab.href : $page.url.pathname.startsWith(tab.href);

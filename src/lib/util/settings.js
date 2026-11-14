@@ -232,12 +232,17 @@ export function buttonsToForm(buttons) {
 /**
  * Form state → button customisation for the API. Buttons left on the defaults are left out.
  * @param {ReturnType<typeof buttonsToForm>} form
+ * @param {ReturnType<typeof buttonRolesToForm>} [roles] which roles can (allow) and can't (deny) use each button
  */
-export function buttonsFromForm(form) {
+export function buttonsFromForm(form, roles = {}) {
 	const out = {};
 	for (const [name] of CUSTOM_BUTTONS) {
 		const button = form?.[name] ?? {};
 		const clean = {};
+		const allow = [...new Set(roles?.[name]?.allow ?? [])];
+		const deny = [...new Set(roles?.[name]?.deny ?? [])];
+		if (allow.length) clean.allow = allow;
+		if (deny.length) clean.deny = deny;
 		const label = String(button.label ?? '').trim();
 		const emoji = String(button.emoji ?? '').trim();
 		if (label) {
@@ -288,3 +293,54 @@ export function creatorRolesFromForm(form) {
  * @param {string | null | undefined} value
  */
 export const optionalText = (value) => String(value ?? '').trim() || null;
+
+// Ticket Tool parity, P3 (bot PR #32)
+
+const MIN_AUTOMATION = 15 * 60 * 1000;
+const MAX_AUTOMATION = 90 * 24 * 60 * 60 * 1000;
+
+/**
+ * Automation rules from the API → form state (durations as text).
+ * @param {{ waitingOn: string, after: number, action: string, tag?: string }[] | null | undefined} rules
+ */
+export function automationsToForm(rules) {
+	return (Array.isArray(rules) ? rules : []).map((rule) => ({
+		action: rule.action ?? 'TAG',
+		after: durationToInput(rule.after) || '',
+		tag: rule.tag ?? '',
+		waitingOn: rule.waitingOn ?? 'STAFF'
+	}));
+}
+
+/**
+ * Form state → automation rules for the API.
+ * @param {ReturnType<typeof automationsToForm>} form
+ */
+export function automationsFromForm(form) {
+	return (form ?? []).map((rule, i) => {
+		const field = `Automation ${i + 1}`;
+		const after = inputToDuration(rule.after, { field });
+		if (after === null) throw new Error(`${field}: how long to wait is required (e.g. 4h).`);
+		if (after < MIN_AUTOMATION || after > MAX_AUTOMATION)
+			throw new Error(`${field}: wait between 15 minutes and 90 days.`);
+		const clean = { action: rule.action, after, waitingOn: rule.waitingOn };
+		if (rule.action === 'TAG') {
+			if (!rule.tag) throw new Error(`${field}: choose a tag to send.`);
+			clean.tag = rule.tag;
+		}
+		return clean;
+	});
+}
+
+/**
+ * Button role limits from the API → form state: `{ allow: [], deny: [] }` for every button.
+ * @param {Record<string, { allow?: string[], deny?: string[] }> | null | undefined} buttons
+ */
+export function buttonRolesToForm(buttons) {
+	return Object.fromEntries(
+		CUSTOM_BUTTONS.map(([name]) => [
+			name,
+			{ allow: [...(buttons?.[name]?.allow ?? [])], deny: [...(buttons?.[name]?.deny ?? [])] }
+		])
+	);
+}

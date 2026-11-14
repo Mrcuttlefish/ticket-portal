@@ -285,3 +285,50 @@ export const tags = () => [
 	{ id: 1, name: 'password', content: 'Reset it here.', regex: 'password', preventedCount: 4 },
 	{ id: 2, name: 'refunds', content: 'See the refund policy.', regex: null, preventedCount: 0 }
 ];
+
+// Ticket Tool parity, P3: statistics and the change history
+export const statistics = () => ({
+	categories: [
+		{ id: 1, name: 'Support', created: 5, closed: 4 },
+		{ id: null, name: null, created: 1, closed: 0 }
+	],
+	days: Array.from({ length: 7 }, (_, i) => ({
+		date: `2026-11-${String(8 + i).padStart(2, '0')}`,
+		created: i,
+		closed: i > 0 ? i - 1 : 0
+	})),
+	open: 2,
+	staff: [{ id: '50', claimed: 3, closed: 4, displayName: 'Alex', username: 'alex', avatar: null }],
+	totals: {
+		avgRating: 4.5,
+		avgResolutionTime: '3h',
+		avgResponseTime: '12m',
+		closed: 15,
+		created: 21
+	}
+});
+
+export const history = (params) => {
+	const entries = [
+		{
+			id: 3,
+			action: 'update',
+			changes: [{ field: 'name', from: 'Support', to: '<b>Help</b>' }],
+			createdAt: '2026-11-14T10:00:00.000Z',
+			target: { id: '1', name: 'Help', type: 'category' },
+			user: { id: '50', displayName: 'Alex', username: 'alex', avatar: null }
+		},
+		{
+			id: 2,
+			action: 'update',
+			changes: [{ field: 'primaryColour', from: '#009999', to: '#123456' }],
+			createdAt: '2026-11-13T10:00:00.000Z',
+			target: { id: GUILD_ID, name: 'Test server', type: 'settings' },
+			user: { id: '50', displayName: 'Alex', username: 'alex', avatar: null }
+		}
+	];
+	const type = params.get('type');
+	const before = Number(params.get('before')) || Infinity;
+	const shown = entries.filter((e) => (!type || e.target.type === type) && e.id < before);
+	return { entries: shown.slice(0, 1), next: shown.length > 1 ? shown[0].id : null };
+};

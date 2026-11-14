@@ -17,7 +17,9 @@
 	let loading = $state(false);
 	let error = $state(null);
 	let touch = $state({
+		autoDm: false,
 		content: null,
+		matchType: 'REGEX',
 		name: null,
 		regex: null
 	});
@@ -27,7 +29,7 @@
 	const filter = (value) => {
 		shown = tS.tags.filter((t) => {
 			const regex = new RegExp(value.replace(/(?=\W)/g, '\\'), 'i');
-			return regex.test(t.name) || regex.test(t.regex) || regex.test(t.content);
+			return regex.test(t.name) || regex.test(t.regex ?? '') || regex.test(t.content);
 		});
 	};
 
@@ -53,7 +55,9 @@
 				tS.tags.push(body);
 				filter(search);
 				touch = {
+					autoDm: false,
 					content: null,
+					matchType: 'REGEX',
 					name: null,
 					regex: null
 				};

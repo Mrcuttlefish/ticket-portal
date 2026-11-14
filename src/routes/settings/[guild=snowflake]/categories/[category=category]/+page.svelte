@@ -15,12 +15,15 @@
 	import RoleLimits from '$components/settings/RoleLimits.svelte';
 	import PingRoleRules from '$components/settings/PingRoleRules.svelte';
 	import OverrideSelect from '$components/settings/OverrideSelect.svelte';
+	import AutomationRules from '$components/settings/AutomationRules.svelte';
 	import CreatorRoles from '$components/settings/CreatorRoles.svelte';
 	import WorkingHours from '$components/settings/WorkingHours.svelte';
 	import DiscordPreview from '$components/settings/DiscordPreview.svelte';
 	import { closedMessagePreview, openingButtons, openingMessagePreview } from '$lib/util/preview';
 	import {
 		BUTTON_STYLES,
+		automationsFromForm,
+		automationsToForm,
 		cleanPingRoleRules,
 		cleanRoleLimits,
 		closedChannelFromForm,
@@ -80,6 +83,10 @@
 	];
 
 	qS.questions = category.questions;
+	// text channels, for thread tickets
+	const textChannels = channels
+		.filter((c) => c.type === 0)
+		.sort((a, b) => (a.rawPosition ?? 0) - (b.rawPosition ?? 0));
 	channels = channels.filter((c) => c.type === 4); // category
 	roles = roles.filter((r) => r.name !== '@everyone').sort((a, b) => b.rawPosition - a.rawPosition);
 	roles.forEach((r) => {
@@ -120,6 +127,14 @@
 	category.staffThread ??= false;
 	category.outOfHours ??= 'WARN';
 	category.creatorRoles = creatorRolesToForm(category.creatorRoles);
+	// Ticket Tool parity, P3 (bot PR #32)
+	category.channelType ??= 'CHANNEL';
+	category.threadParent ??= '';
+	category.onCreatorLeave ??= 'CLOSE';
+	category.automations = automationsToForm(category.automations);
+	const tags = (data.tags ?? [])
+		.map((t) => ({ name: t.name }))
+		.sort((a, b) => a.name.localeCompare(b.name));
 	// null = use the server's working hours
 	let customHours = $state(Array.isArray(category.workingHours));
 	category.workingHours = workingHoursToForm(category.workingHours ?? data.settings?.workingHours);
@@ -172,6 +187,10 @@
 			json.reopenedMessage = optionalText(category.reopenedMessage);
 			json.creatorRoles = creatorRolesFromForm(category.creatorRoles);
 			json.workingHours = customHours ? workingHoursFromForm(category.workingHours) : null;
+			json.threadParent = category.channelType === 'THREAD' ? category.threadParent || null : null;
+			if (category.channelType === 'THREAD' && !json.threadParent)
+				throw new Error('Choose the channel that thread tickets are created in.');
+			json.automations = automationsFromForm(category.automations);
 
 			if (json.name.length > 30) throw new Error(`The name is too long (${json.name.length}>30).`);
 
@@ -415,6 +434,35 @@
 				<Section id="channels" title="Ticket channels" icon="fa-solid fa-hashtag">
 					<div>
 						<label class="font-medium">
+							Tickets are
+							<select class="input form-multiselect" bind:value={category.channelType}>
+								<option value="CHANNEL">Channels</option>
+								<option value="THREAD">Private threads in a channel</option>
+							</select>
+							<Hint
+								>Threads keep the channel list short. Staff need to see the channel, and members
+								only see their own threads. Thread tickets can't be moved with /move, and claimed
+								threads can't be hidden from other staff.</Hint
+							>
+						</label>
+					</div>
+					{#if category.channelType === 'THREAD'}
+						<div>
+							<label class="font-medium">
+								Thread channel
+								<Required />
+								<select class="input form-multiselect" required bind:value={category.threadParent}>
+									<option value="" disabled>Choose a channel</option>
+									{#each textChannels as channel (channel.id)}
+										<option value={channel.id}># {channel.name}</option>
+									{/each}
+								</select>
+								<Hint>The text channel that ticket threads are created in.</Hint>
+							</label>
+						</div>
+					{/if}
+					<div>
+						<label class="font-medium">
 							Discord category
 							<Required />
 							<select class="input form-multiselect" required bind:value={category.discordCategory}>
@@ -484,6 +532,16 @@
 					</div>
 				</Section>
 				<Section id="closing" title="Closed tickets" icon="fa-solid fa-lock">
+					<div>
+						<label class="font-medium">
+							When the creator leaves the server
+							<select class="input form-multiselect" bind:value={category.onCreatorLeave}>
+								<option value="CLOSE">Close their tickets</option>
+								<option value="DELETE">Close their tickets and delete the channels</option>
+								<option value="KEEP">Keep their tickets open</option>
+							</select>
+						</label>
+					</div>
 					<div>
 						<label class="font-medium">
 							When a ticket closes
@@ -777,6 +835,17 @@
 							<Hint>How long should members have to wait before creating another ticket?</Hint>
 						</label>
 					</div>
+				</Section>
+				<Section
+					id="automations"
+					title="Automations"
+					icon="fa-solid fa-robot"
+					description="Send a tag or close the ticket when nobody has replied for a while. Each rule runs once each time the ticket waits; automations are checked every 15 minutes."
+				>
+					<AutomationRules {tags} bind:value={category.automations} />
+					{#if tags.length === 0}
+						<Hint>Create a tag first to send one automatically.</Hint>
+					{/if}
 				</Section>
 				<Section id="features" title="Features" icon="fa-solid fa-toggle-on">
 					<div>
