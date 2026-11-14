@@ -68,3 +68,16 @@ test('placeholder values are escaped unless marked as HTML', () => {
 	// `$&` and friends in values must not be treated as replacement patterns
 	assert.ok(renderMarkdown('{name}', [[/{name}/g, '$&$&']]).includes('$&amp;$&amp;'));
 });
+
+test('ticket messages show markdown images as links, so viewing a transcript loads nothing from the author', () => {
+	const html = renderMarkdown('look ![me](https://attacker.example/track.png)', [], {
+		images: false
+	});
+	assert.ok(!html.includes('<img'), html);
+	assert.ok(html.includes('href="https://attacker.example/track.png"'));
+	assert.ok(html.includes('>me</a>'));
+	assert.ok(!renderMarkdown('![x](javascript:alert(1))', [], { images: false }).includes('href'));
+	assert.ok(
+		!renderMarkdown('![<b>x</b>](https://a.example/x.png)', [], { images: false }).includes('<b>')
+	);
+});
