@@ -62,10 +62,15 @@
 		requestAnimationFrame(() => list?.scrollTo({ top: list.scrollHeight }));
 	}
 
-	onMount(() => {
-		scrollToEnd();
-		if (!ticket.open) return;
-		const source = new EventSource(eventsUrl(guildId, ticket.id), { withCredentials: true });
+	// the bot allows one live stream per user: opening another tab moves it there ('replaced'), and it ends if
+	// the viewer loses access ('access-revoked')
+	let source;
+	let paused = $state(null); // null, 'replaced' or 'revoked'
+
+	function connect() {
+		source?.close();
+		paused = null;
+		source = new EventSource(eventsUrl(guildId, ticket.id), { withCredentials: true });
 		source.onopen = () => (live = true);
 		source.onerror = () => (live = false); // EventSource reconnects by itself
 		source.addEventListener('message', (e) => {
@@ -79,6 +84,16 @@
 			const { id } = JSON.parse(e.data);
 			messages = messages.map((m) => (m.id === id ? { ...m, deleted: true } : m));
 		});
+		source.addEventListener('replaced', () => {
+			source.close();
+			live = false;
+			paused = 'replaced';
+		});
+		source.addEventListener('access-revoked', () => {
+			source.close();
+			live = false;
+			paused = 'revoked';
+		});
 		source.addEventListener('ticket-closed', async () => {
 			source.close();
 			ticket = { ...ticket, open: false, closedAt: ticket.closedAt ?? new Date().toISOString() };
@@ -91,7 +106,13 @@
 			source.close();
 			live = false;
 		});
-		return () => source.close();
+	}
+
+	onMount(() => {
+		scrollToEnd();
+		if (!ticket.open) return;
+		connect();
+		return () => source?.close();
 	});
 
 	async function loadOlder() {
@@ -176,7 +197,20 @@
 					title="Live updates"
 				>
 					<span class="h-2 w-2 rounded-full {live ? 'bg-green-500' : 'bg-dgrey-400'}"></span>
-					{live ? 'Live' : 'Connecting…'}
+					{#if paused === 'replaced'}
+						<span data-testid="live-paused">Live updates are open in another tab.</span>
+						<button
+							type="button"
+							class="font-semibold text-blurple hover:underline"
+							onclick={connect}
+						>
+							Use this tab
+						</button>
+					{:else if paused === 'revoked'}
+						<span data-testid="live-revoked">You no longer have access to live updates.</span>
+					{:else}
+						{live ? 'Live' : 'Connecting…'}
+					{/if}
 				</span>
 			{/if}
 		</header>

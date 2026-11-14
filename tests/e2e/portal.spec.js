@@ -166,6 +166,31 @@ test.describe('replying', () => {
 		});
 		await expect(page.getByRole('log', { name: 'Messages' }).getByText(text)).toBeVisible();
 	});
+
+	test('one live stream per user: another tab takes it over, and this one can take it back', async ({
+		page,
+		request
+	}) => {
+		await page.goto(`${ticketsPath}/${OPEN_TICKET}`);
+		await expect(page.getByText('Live')).toBeVisible();
+		// the bot sends this to the old stream when the same user opens a new one
+		await request.post('/__emit', { data: { ticket: OPEN_TICKET, event: 'replaced', data: {} } });
+		await expect(page.getByTestId('live-paused')).toHaveText(
+			'Live updates are open in another tab.'
+		);
+		await page.getByRole('button', { name: 'Use this tab' }).click();
+		await expect(page.getByText('Live', { exact: true })).toBeVisible();
+	});
+
+	test('the live stream stops when access is revoked', async ({ page, request }) => {
+		await page.goto(`${ticketsPath}/${OPEN_TICKET}`);
+		await expect(page.getByText('Live')).toBeVisible();
+		await request.post('/__emit', {
+			data: { ticket: OPEN_TICKET, event: 'access-revoked', data: {} }
+		});
+		await expect(page.getByTestId('live-revoked')).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Use this tab' })).toHaveCount(0);
+	});
 });
 
 test('closing a ticket', async ({ page }) => {

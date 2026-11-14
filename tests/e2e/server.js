@@ -143,11 +143,12 @@ http
 		if (p === '/api/client') return json(res, 200, f.client);
 		if (p === '/api/admin/guilds') return json(res, 200, [f.guild]);
 		if (p === g) {
-			return json(
-				res,
-				200,
-				ownerId ? { ...f.guild, ownerId, canManageData: ownerId === f.user.id } : f.guild
-			);
+			// tests can sign in "with a dashboard role" (settings only) with a cookie
+			const viaDashboardRole = /(?:^|;\s*)e2e_dashboard_role=1/.test(req.headers.cookie ?? '');
+			const guild = ownerId
+				? { ...f.guild, ownerId, canManageData: ownerId === f.user.id }
+				: f.guild;
+			return json(res, 200, viaDashboardRole ? { ...guild, viaDashboardRole } : guild);
 		}
 		if (p === `${g}/export`) {
 			// the bot only lets the owner export; an unknown owner is treated as "not you"
