@@ -65,6 +65,8 @@
 	});
 
 	let { category, channels, roles, url } = $state(data);
+	// dashboard roles can't choose staff roles (the bot refuses), see the general page
+	const viaDashboardRole = data.guild?.viaDashboardRole === true;
 
 	const slowmodes = [
 		'5s',
@@ -644,10 +646,11 @@
 					<div>
 						<label class="font-medium">
 							Staff roles
-							<Required />
+							{#if !viaDashboardRole}<Required />{/if}
 							<select
 								multiple
-								required
+								required={!viaDashboardRole}
+								disabled={viaDashboardRole}
 								class="input form-multiselect h-44 font-normal"
 								bind:value={category.staffRoles}
 							>
@@ -659,7 +662,14 @@
 									</option>
 								{/each}
 							</select>
-							<Hint>Roles that will be able to view tickets.</Hint>
+							{#if viaDashboardRole}
+								<Hint
+									>Roles that will be able to view tickets. Only members with Manage Server can
+									change this.</Hint
+								>
+							{:else}
+								<Hint>Roles that will be able to view tickets.</Hint>
+							{/if}
 						</label>
 					</div>
 					<div>

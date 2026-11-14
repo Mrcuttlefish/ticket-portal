@@ -82,6 +82,29 @@ test.describe('Ticket Tool parity (P3)', () => {
 		expect(body.buttons).toEqual({ close: { deny: ['12'] } });
 	});
 
+	test('dashboard roles: no Statistics tab and no choosing staff roles', async ({
+		page,
+		context,
+		baseURL
+	}) => {
+		await context.addCookies([{ name: 'e2e_dashboard_role', value: '1', url: baseURL }]);
+		await page.goto(`/settings/${GUILD_ID}/categories/${CATEGORY_ID}`);
+		await page.waitForLoadState('networkidle');
+		const nav = page.getByRole('navigation', { name: 'Server settings' });
+		await expect(nav.getByRole('link', { name: 'History' })).toBeVisible();
+		await expect(nav.getByRole('link', { name: 'Statistics' })).toHaveCount(0);
+		await expect(page.getByLabel(/^Staff roles/)).toBeDisabled();
+		await expect(page.getByText('Only members with Manage Server can change this.')).toBeVisible();
+	});
+
+	test('without a dashboard role, Statistics and staff roles are there', async ({ page }) => {
+		await page.goto(`/settings/${GUILD_ID}/categories/${CATEGORY_ID}`);
+		await page.waitForLoadState('networkidle');
+		const nav = page.getByRole('navigation', { name: 'Server settings' });
+		await expect(nav.getByRole('link', { name: 'Statistics' })).toBeVisible();
+		await expect(page.getByLabel(/^Staff roles/)).toBeEnabled();
+	});
+
 	test('tags: wildcard triggers and DMs are saved', async ({ page, request }) => {
 		await page.goto(`/settings/${GUILD_ID}/tags`);
 		await page.waitForLoadState('networkidle');

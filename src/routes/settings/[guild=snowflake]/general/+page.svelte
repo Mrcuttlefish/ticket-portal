@@ -436,8 +436,8 @@
 					<Hint>Only members with Manage Server can change this.</Hint>
 				{:else}
 					<Hint
-						>Only give these to people you'd trust as admins: they can change staff roles and see
-						every ticket's transcript.</Hint
+						>These roles can change settings, categories, panels and tags. They can't choose staff
+						roles, read tickets or statistics here, or export, import or reset the server.</Hint
 					>
 				{/if}
 			</label>
