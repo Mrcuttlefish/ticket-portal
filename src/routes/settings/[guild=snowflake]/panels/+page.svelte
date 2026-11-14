@@ -275,6 +275,7 @@
 							liActiveUserMsgClass=""
 							maxSelectMsgClass="text-xs"
 							noMatchingOptionsMsg="Create a category in the categories section"
+							allowEmpty={true}
 							required={true}
 							maxSelect={panel.type === 'MENU' ? 25 : 5}
 							options={Object.keys(categoryOptions)}
