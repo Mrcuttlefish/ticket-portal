@@ -123,7 +123,7 @@ test('a menu question can be made optional', async ({ page, request }) => {
 async function addMenuQuestion(page) {
 	await page.goto(categoryPath);
 	await page.waitForLoadState('networkidle');
-	await page.getByRole('button', { name: 'Add' }).click();
+	await page.getByRole('button', { name: /\bAdd$/ }).click();
 	await page.getByText('Click to expand').nth(1).click();
 	const type = page.locator('select').filter({ has: page.locator('option[value="MENU"]') });
 	await expect(type.locator('option[value="MENU"]')).toBeEnabled();

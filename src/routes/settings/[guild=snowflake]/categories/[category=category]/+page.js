@@ -59,6 +59,12 @@ export async function load({ fetch, params }) {
 		roles: await (
 			await fetch(`/api/admin/guilds/${params.guild}/data?query=roles.cache`, fetchOptions)
 		).json(),
-		settings: await (await fetch(`/api/admin/guilds/${params.guild}/settings`, fetchOptions)).json()
+		settings: await (
+			await fetch(`/api/admin/guilds/${params.guild}/settings`, fetchOptions)
+		).json(),
+		// for automation rules that send a tag
+		tags: await fetch(`/api/admin/guilds/${params.guild}/tags`, fetchOptions)
+			.then((response) => (response.ok ? response.json() : []))
+			.catch(() => [])
 	};
 }

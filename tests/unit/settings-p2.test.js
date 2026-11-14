@@ -45,3 +45,32 @@ test('optional messages turn blank into null', () => {
 	assert.equal(optionalText(null), null);
 	assert.equal(optionalText(' hi '), 'hi');
 });
+
+test('P3: automation rules round-trip and are checked', async () => {
+	const { automationsFromForm, automationsToForm } = await import('../../src/lib/util/settings.js');
+	const form = automationsToForm([
+		{ action: 'TAG', after: 4 * 3_600_000, tag: 'waiting', waitingOn: 'STAFF' },
+		{ action: 'CLOSE', after: 2 * 86_400_000, waitingOn: 'CREATOR' }
+	]);
+	assert.deepEqual(form[0], { action: 'TAG', after: '4h', tag: 'waiting', waitingOn: 'STAFF' });
+	assert.deepEqual(form[1], { action: 'CLOSE', after: '2d', tag: '', waitingOn: 'CREATOR' });
+	assert.deepEqual(automationsFromForm(form), [
+		{ action: 'TAG', after: 4 * 3_600_000, tag: 'waiting', waitingOn: 'STAFF' },
+		{ action: 'CLOSE', after: 2 * 86_400_000, waitingOn: 'CREATOR' }
+	]);
+	assert.throws(() => automationsFromForm([{ ...form[0], after: '5m' }]), /15 minutes/);
+	assert.throws(() => automationsFromForm([{ ...form[0], after: '' }]), /required/);
+	assert.throws(() => automationsFromForm([{ ...form[0], tag: '' }]), /choose a tag/);
+	assert.deepEqual(automationsToForm(null), []);
+});
+
+test('P3: button role limits are sent with the button customisation', async () => {
+	const { buttonRolesToForm } = await import('../../src/lib/util/settings.js');
+	const roles = buttonRolesToForm({ close: { deny: ['1'] } });
+	assert.deepEqual(roles.close, { allow: [], deny: ['1'] });
+	roles.claim.allow = ['2', '2'];
+	assert.deepEqual(buttonsFromForm(buttonsToForm({ close: { label: 'Done' } }), roles), {
+		claim: { allow: ['2'] },
+		close: { deny: ['1'], label: 'Done' }
+	});
+});

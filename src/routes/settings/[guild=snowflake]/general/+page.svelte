@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import WorkingHours from '$components/settings/WorkingHours.svelte';
 	import ButtonCustomiser from '$components/settings/ButtonCustomiser.svelte';
+	import RoleSelect from '$components/settings/RoleSelect.svelte';
 	import HolidayPicker from '$components/settings/HolidayPicker.svelte';
 	import Section from '$components/settings/Section.svelte';
 	import Hint from '$components/settings/Hint.svelte';
@@ -9,6 +10,7 @@
 	import {
 		LOG_EVENTS,
 		WEBHOOK_SECRET_MASK,
+		buttonRolesToForm,
 		buttonsFromForm,
 		buttonsToForm,
 		durationToInput,
@@ -68,7 +70,11 @@
 	settings.ticketNumberOffset ??= 0;
 	settings.webhookUrl ??= '';
 	// Ticket Tool parity, P2 (bot PR #31)
+	let buttonAccess = $state(buttonRolesToForm(settings.buttons));
 	settings.buttons = buttonsToForm(settings.buttons);
+	// Ticket Tool parity, P3 (bot PR #32): members with these roles can use the dashboard without Manage Server
+	settings.dashboardRoles = [...(settings.dashboardRoles ?? [])];
+	const viaDashboardRole = data.guild?.viaDashboardRole === true;
 	settings.moveRelease ??= false;
 	settings.moveResend ??= false;
 	settings.userLimit ??= 0;
@@ -107,7 +113,7 @@
 			if (settings.logChannel === '') json.logChannel = null;
 			if (settings.transcriptChannel === '') json.transcriptChannel = null;
 			json.workingHours = workingHoursFromForm(settings.workingHours);
-			json.buttons = buttonsFromForm(settings.buttons);
+			json.buttons = buttonsFromForm(settings.buttons, buttonAccess);
 			json.userLimit = Math.max(0, Math.min(100, Number(settings.userLimit) || 0));
 
 			const response = await fetch(`/api/admin/guilds/${$page.params.guild}/settings`, {
@@ -404,11 +410,37 @@
 			icon="fa-solid fa-hand-pointer"
 			description="Change the label, emoji and colour of the bot's buttons. Leave a box empty to keep the default."
 		>
-			<ButtonCustomiser bind:value={settings.buttons} />
+			<ButtonCustomiser {roles} bind:value={settings.buttons} bind:access={buttonAccess} />
 			<Hint
 				>Emoji can be a unicode emoji, a name like :tickets:, or a custom emoji like
-				&lt;:name:123456789012345678&gt;.</Hint
+				&lt;:name:123456789012345678&gt;. Members with Manage Server can always use every button.</Hint
 			>
+		</Section>
+
+		<Section
+			id="dashboard"
+			title="Dashboard access"
+			icon="fa-solid fa-user-gear"
+			description="Members with these roles can change this server's settings here without the Manage Server permission. They can't export or import the server, or change this list."
+		>
+			<label class="font-medium">
+				Dashboard roles
+				<RoleSelect
+					{roles}
+					label="Dashboard roles"
+					size="h-36"
+					disabled={viaDashboardRole}
+					bind:value={settings.dashboardRoles}
+				/>
+				{#if viaDashboardRole}
+					<Hint>Only members with Manage Server can change this.</Hint>
+				{:else}
+					<Hint
+						>Only give these to people you'd trust as admins: they can change staff roles and see
+						every ticket's transcript.</Hint
+					>
+				{/if}
+			</label>
 		</Section>
 
 		<Section id="channels" title="Channels" icon="fa-solid fa-hashtag">
