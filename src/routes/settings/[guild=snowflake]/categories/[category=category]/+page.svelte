@@ -15,15 +15,23 @@
 	import RoleLimits from '$components/settings/RoleLimits.svelte';
 	import PingRoleRules from '$components/settings/PingRoleRules.svelte';
 	import OverrideSelect from '$components/settings/OverrideSelect.svelte';
+	import CreatorRoles from '$components/settings/CreatorRoles.svelte';
+	import WorkingHours from '$components/settings/WorkingHours.svelte';
 	import DiscordPreview from '$components/settings/DiscordPreview.svelte';
 	import { closedMessagePreview, openingButtons, openingMessagePreview } from '$lib/util/preview';
 	import {
+		BUTTON_STYLES,
 		cleanPingRoleRules,
 		cleanRoleLimits,
 		closedChannelFromForm,
 		closedChannelToForm,
+		creatorRolesFromForm,
+		creatorRolesToForm,
 		durationToInput,
-		inputToDuration
+		inputToDuration,
+		optionalText,
+		workingHoursFromForm,
+		workingHoursToForm
 	} from '$lib/util/settings';
 	import { getContext, onMount } from 'svelte';
 	import { beforeNavigate } from '$app/navigation';
@@ -101,12 +109,27 @@
 		ping: [...(r.ping ?? [])]
 	}));
 	category.roleLimits = (category.roleLimits ?? []).map((r) => ({ ...r }));
+	// Ticket Tool parity, P2 (bot PR #31)
+	category.buttonLabel ??= '';
+	category.buttonStyle ??= '';
+	category.closedChannelName ??= '';
+	category.closedLimit ??= 0;
+	category.closedMessage ??= '';
+	category.openDm ??= '';
+	category.reopenedMessage ??= '';
+	category.staffThread ??= false;
+	category.outOfHours ??= 'WARN';
+	category.creatorRoles = creatorRolesToForm(category.creatorRoles);
+	// null = use the server's working hours
+	let customHours = $state(Array.isArray(category.workingHours));
+	category.workingHours = workingHoursToForm(category.workingHours ?? data.settings?.workingHours);
 	const serverSettings = data.settings ?? {};
 	let showAdvanced = $state(
 		category.roleLimits.length > 0 ||
 			category.pingRoleRules.length > 0 ||
 			category.fallbackCategories.length > 0 ||
 			category.blockedRoles.length > 0 ||
+			Object.values(category.creatorRoles).some((c) => c.add.length + c.remove.length > 0) ||
 			[category.archive, category.claimButton, category.closeButton].some((v) => v !== null) ||
 			category.autoClose !== '' ||
 			category.staleAfter !== ''
@@ -140,6 +163,15 @@
 			json.fallbackCategories = category.fallbackCategories.filter(
 				(id) => id !== category.discordCategory
 			);
+			json.buttonLabel = optionalText(category.buttonLabel);
+			json.buttonStyle = category.buttonStyle || null;
+			json.closedChannelName = optionalText(category.closedChannelName);
+			json.closedLimit = Math.max(0, Math.min(100, Number(category.closedLimit) || 0));
+			json.closedMessage = optionalText(category.closedMessage);
+			json.openDm = optionalText(category.openDm);
+			json.reopenedMessage = optionalText(category.reopenedMessage);
+			json.creatorRoles = creatorRolesFromForm(category.creatorRoles);
+			json.workingHours = customHours ? workingHoursFromForm(category.workingHours) : null;
 
 			if (json.name.length > 30) throw new Error(`The name is too long (${json.name.length}>30).`);
 
@@ -357,6 +389,28 @@
 							<Hint>A link to an image to be sent with the opening message.</Hint>
 						</label>
 					</div>
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+						<label class="font-medium">
+							Panel button label
+							<input
+								type="text"
+								class="input form-input"
+								maxlength="80"
+								placeholder={category.name || 'The category name'}
+								bind:value={category.buttonLabel}
+							/>
+						</label>
+						<label class="font-medium">
+							Panel button colour
+							<select class="input form-multiselect" bind:value={category.buttonStyle}>
+								<option value="">Default</option>
+								{#each BUTTON_STYLES as [style, label] (style)}
+									<option value={style}>{label}</option>
+								{/each}
+							</select>
+						</label>
+						<Hint>Used when this category is a button on a panel.</Hint>
+					</div>
 				</Section>
 				<Section id="channels" title="Ticket channels" icon="fa-solid fa-hashtag">
 					<div>
@@ -460,6 +514,67 @@
 							</label>
 						</div>
 					{/if}
+					{#if closedChannel.mode !== 'delete'}
+						<div>
+							<label class="font-medium">
+								Channel name when closed
+								<input
+									type="text"
+									class="input form-input"
+									maxlength="100"
+									placeholder="Keep the name. Use e.g. closed-{'{'}num{'}'}"
+									bind:value={category.closedChannelName}
+								/>
+								<Hint
+									>Reopening puts the old name back. Discord only allows 2 renames every 10 minutes.</Hint
+								>
+							</label>
+						</div>
+						<div>
+							<label class="font-medium">
+								Kept closed tickets per member
+								<input
+									type="number"
+									min="0"
+									max="100"
+									class="input form-input"
+									bind:value={category.closedLimit}
+								/>
+								<Hint
+									>Members can't open a new ticket while they have this many closed tickets still
+									waiting to be deleted. 0 means no limit.</Hint
+								>
+							</label>
+						</div>
+					{/if}
+					<div>
+						<label class="font-medium">
+							Closed message
+							<textarea
+								class="input form-input"
+								rows="3"
+								maxlength="2000"
+								placeholder="Optional, e.g. Thanks for contacting us, {'{'}username{'}'}!"
+								bind:value={category.closedMessage}
+							></textarea>
+							<Hint
+								>Added to the closed message and the DM to the member. Supports the opening message
+								placeholders plus {'{'}claimer{'}'}, {'{'}reason{'}'} and {'{'}age{'}'}.</Hint
+							>
+						</label>
+					</div>
+					<div>
+						<label class="font-medium">
+							Reopened message
+							<textarea
+								class="input form-input"
+								rows="2"
+								maxlength="2000"
+								placeholder="Optional, sent when staff reopen a ticket"
+								bind:value={category.reopenedMessage}
+							></textarea>
+						</label>
+					</div>
 					{#if closedChannel.mode !== 'delete'}
 						<div class="md:col-span-2">
 							<p class="mb-1 mt-2 text-sm font-semibold">What staff see when a ticket closes</p>
@@ -584,8 +699,51 @@
 							<Hint>Require a topic before ticket creation?</Hint>
 						</label>
 					</div>
+					<div>
+						<label class="font-medium">
+							DM when a ticket opens
+							<textarea
+								class="input form-input"
+								rows="2"
+								maxlength="2000"
+								placeholder="Optional, e.g. We got your ticket and will reply soon."
+								bind:value={category.openDm}
+							></textarea>
+							<Hint
+								>Sent to the member with a link to the ticket. Supports the opening message
+								placeholders.</Hint
+							>
+						</label>
+					</div>
 				</Section>
 				<Section id="limits" title="Limits" icon="fa-solid fa-gauge">
+					<div>
+						<label class="font-medium">
+							Outside working hours
+							<select class="input form-multiselect" bind:value={category.outOfHours}>
+								<option value="WARN">Open the ticket and say when staff are back</option>
+								<option value="BLOCK">Don't let members open tickets</option>
+							</select>
+						</label>
+					</div>
+					<div>
+						<label for="customHours" class="font-medium">
+							Different working hours for this category
+							<input
+								type="checkbox"
+								id="customHours"
+								class="form-checkbox"
+								bind:checked={customHours}
+							/>
+							<Hint>Otherwise the working hours in General settings are used.</Hint>
+						</label>
+					</div>
+					{#if customHours}
+						<fieldset class="ml-4 grid grid-cols-1 gap-4 border-l-2 border-blurple/40 pl-4">
+							<legend class="sr-only">Category working hours</legend>
+							<WorkingHours id="category-timezones" bind:value={category.workingHours} />
+						</fieldset>
+					{/if}
 					<div>
 						<label class="font-medium">
 							Member limit
@@ -733,6 +891,18 @@
 							<Hint>Gather feedback from members?</Hint>
 						</label>
 					</div>
+					<div>
+						<label for="staffThread" class="font-medium">
+							Private staff thread
+							<input
+								type="checkbox"
+								id="staffThread"
+								class="form-checkbox"
+								bind:checked={category.staffThread}
+							/>
+							<Hint>Create a private thread in each ticket where staff can talk.</Hint>
+						</label>
+					</div>
 				</Section>
 				<details
 					class="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-700"
@@ -783,6 +953,15 @@
 								/>
 								<RoleSelect {roles} label="Blocked roles" bind:value={category.blockedRoles} />
 							</label>
+						</div>
+						<div>
+							<p class="font-medium">
+								Creator roles
+								<Help
+									text="Give or take roles from the member who opened the ticket. You can only pick roles you could manage yourself, and the bot won't give roles with moderation or admin permissions."
+								/>
+							</p>
+							<CreatorRoles {roles} bind:value={category.creatorRoles} />
 						</div>
 						<fieldset class="grid grid-cols-1 gap-4">
 							<legend class="mb-2 font-medium">

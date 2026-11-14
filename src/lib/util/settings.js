@@ -183,3 +183,108 @@ export const LOG_EVENTS = [
 	['message.delete', 'Messages deleted'],
 	['admin', 'Settings changes']
 ];
+
+// Ticket Tool parity, P2 (bot PR #31)
+
+/** Buttons whose label, emoji and colour can be changed, in the order they're shown. */
+export const CUSTOM_BUTTONS = [
+	['create', 'Create ticket (panels)'],
+	['claim', 'Claim'],
+	['unclaim', 'Release'],
+	['close', 'Close'],
+	['edit', 'Edit answers'],
+	['reopen', 'Reopen'],
+	['transcript', 'Transcript'],
+	['delete', 'Delete']
+];
+
+export const BUTTON_STYLES = [
+	['PRIMARY', 'Blurple'],
+	['SECONDARY', 'Grey'],
+	['SUCCESS', 'Green'],
+	['DANGER', 'Red']
+];
+
+/** Events that can give or take the ticket creator's roles. */
+export const CREATOR_ROLE_EVENTS = [
+	['open', 'Ticket opened'],
+	['claim', 'Ticket claimed'],
+	['close', 'Ticket closed']
+];
+
+/**
+ * Button customisation from the API → form state, with every button present.
+ * @param {Record<string, {label?: string, emoji?: string, style?: string}> | null | undefined} buttons
+ */
+export function buttonsToForm(buttons) {
+	return Object.fromEntries(
+		CUSTOM_BUTTONS.map(([name]) => [
+			name,
+			{
+				emoji: buttons?.[name]?.emoji ?? '',
+				label: buttons?.[name]?.label ?? '',
+				style: buttons?.[name]?.style ?? ''
+			}
+		])
+	);
+}
+
+/**
+ * Form state → button customisation for the API. Buttons left on the defaults are left out.
+ * @param {ReturnType<typeof buttonsToForm>} form
+ */
+export function buttonsFromForm(form) {
+	const out = {};
+	for (const [name] of CUSTOM_BUTTONS) {
+		const button = form?.[name] ?? {};
+		const clean = {};
+		const label = String(button.label ?? '').trim();
+		const emoji = String(button.emoji ?? '').trim();
+		if (label) {
+			if (label.length > 80) throw new Error(`The ${name} button label is too long (max 80).`);
+			clean.label = label;
+		}
+		if (emoji) clean.emoji = emoji;
+		if (button.style) clean.style = button.style;
+		if (Object.keys(clean).length) out[name] = clean;
+	}
+	return out;
+}
+
+/**
+ * Creator roles from the API → form state, with every event present.
+ * @param {Record<string, {add?: string[], remove?: string[]}> | null | undefined} creatorRoles
+ */
+export function creatorRolesToForm(creatorRoles) {
+	return Object.fromEntries(
+		CREATOR_ROLE_EVENTS.map(([event]) => [
+			event,
+			{
+				add: [...(creatorRoles?.[event]?.add ?? [])],
+				remove: [...(creatorRoles?.[event]?.remove ?? [])]
+			}
+		])
+	);
+}
+
+/**
+ * Form state → creator roles for the API. Events with no roles are left out.
+ * @param {ReturnType<typeof creatorRolesToForm>} form
+ */
+export function creatorRolesFromForm(form) {
+	const out = {};
+	for (const [event, label] of CREATOR_ROLE_EVENTS) {
+		const add = [...new Set(form?.[event]?.add ?? [])];
+		const remove = [...new Set(form?.[event]?.remove ?? [])].filter((id) => !add.includes(id));
+		if (add.length + remove.length > 10)
+			throw new Error(`${label}: at most 10 roles can be given or taken.`);
+		if (add.length || remove.length) out[event] = { add, remove };
+	}
+	return out;
+}
+
+/**
+ * An optional message: blank becomes null (off).
+ * @param {string | null | undefined} value
+ */
+export const optionalText = (value) => String(value ?? '').trim() || null;
