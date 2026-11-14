@@ -1,15 +1,28 @@
+import { fileURLToPath } from 'node:url';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { I18nPlugin } from '@eartharoid/vite-plugin-i18n';
+import { LOCALE_ID_REGEX } from './src/lib/locale-id.js';
 
 /** @type {import('vite').UserConfig} */
 const config = {
 	plugins: [
 		sveltekit(),
 		I18nPlugin({
-			id_regex: /((?<locale>[a-z0-9-_]+)\/)((_(?<namespace>[a-z0-9-_]+))|[a-z0-9-_]+)\.[a-z]+/i,
+			id_regex: LOCALE_ID_REGEX,
 			include: 'src/lib/locales/*/*.json'
 		})
 	],
+	resolve: {
+		alias: [
+			// jszip's prebuilt browser file includes a setImmediate polyfill that can eval strings;
+			// build jszip from its source and give it a polyfill that can't (see the shim)
+			{ find: /^jszip$/, replacement: 'jszip/lib/index.js' },
+			{
+				find: /^setimmediate$/,
+				replacement: fileURLToPath(new URL('./src/lib/shims/setimmediate.js', import.meta.url))
+			}
+		]
+	},
 	server: {
 		host: '127.0.0.1',
 		proxy: {

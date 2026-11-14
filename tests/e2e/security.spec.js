@@ -24,6 +24,25 @@ test.describe('pages render cleanly under the CSP', () => {
 	}
 });
 
+// The login page and the portal use the bundled translations; a build that got the locale
+// wrong threw on the first translated string and left the page on its loading spinner.
+test.describe('translated pages render', () => {
+	const slug = BigInt(GUILD_ID).toString(36);
+	for (const [path, text] of [
+		['/login', 'Language'],
+		[`/${slug}/tickets`, 'Log out']
+	]) {
+		test(path, async ({ page, issues }) => {
+			const response = await page.goto(path);
+			expect(response.status()).toBe(200);
+			await page.waitForLoadState('networkidle');
+			await expect(page.getByText(text, { exact: true }).first()).toBeVisible();
+			expect(issues.errors).toEqual([]);
+			expect(issues.csp).toEqual([]);
+		});
+	}
+});
+
 test('security headers are set', async ({ page }) => {
 	const response = await page.goto('/settings');
 	const headers = response.headers();
